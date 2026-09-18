@@ -50,7 +50,7 @@ function createWindow() {
     height: 920,
     minWidth: 1000,
     minHeight: 640,
-    title: 'Dojo',
+    title: 'Wonder',
     backgroundColor: '#1e1e1e',
     icon: path.join(app.getAppPath(), 'build', 'icon.png'),
     frame: false, // 无边框，标题栏由应用自绘

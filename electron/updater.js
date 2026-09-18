@@ -2,10 +2,10 @@
 const { autoUpdater } = require('electron-updater');
 const { app } = require('electron');
 
-// 更新源：默认阿里云 OSS（fryappstore 桶下的 dojo 目录），
-// 可用 DOJO_UPDATE_MIRROR 覆盖；OSS 失败时自动回退到 GitHub Releases。
-const UPDATE_MIRROR_DEFAULT = 'https://fryappstore.oss-cn-beijing.aliyuncs.com/dojo/';
-const UPDATE_MIRROR = (process.env.DOJO_UPDATE_MIRROR || UPDATE_MIRROR_DEFAULT).trim();
+// 更新源：默认阿里云 OSS（fryappstore 桶下的 wonder 目录），
+// 可用 WONDER_UPDATE_MIRROR 覆盖；OSS 失败时自动回退到 GitHub Releases。
+const UPDATE_MIRROR_DEFAULT = 'https://fryappstore.oss-cn-beijing.aliyuncs.com/wonder/';
+const UPDATE_MIRROR = (process.env.WONDER_UPDATE_MIRROR || UPDATE_MIRROR_DEFAULT).trim();
 const GH_OWNER = 'locolocoer';
 const GH_REPO = 'Dojo';
 

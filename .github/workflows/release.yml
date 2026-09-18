@@ -100,7 +100,7 @@ jobs:
             sed -i -E "s#(url|path): #\1: v${VERSION}/#" "$yml"
           done
           # --acl public-read：客户端用匿名 GET 下载更新，对象必须可公开读取
-          if ! ./ossutil cp -rf artifacts/ "oss://${OSS_BUCKET}/dojo/" --acl public-read; then
+          if ! ./ossutil cp -rf artifacts/ "oss://${OSS_BUCKET}/wonder/" --acl public-read; then
             echo "::error::OSS 上传失败：请确认 AccessKey 对桶 ${OSS_BUCKET} 有写权限，且桶允许匿名读取。"
             exit 1
           fi
@@ -113,7 +113,7 @@ jobs:
           OSS_BUCKET: ${{ vars.OSS_BUCKET || 'fryappstore' }}
           OSS_ENDPOINT: ${{ vars.OSS_ENDPOINT || 'oss-cn-beijing.aliyuncs.com' }}
         run: |
-          URL="https://${OSS_BUCKET}.${OSS_ENDPOINT}/dojo/latest.yml"
+          URL="https://${OSS_BUCKET}.${OSS_ENDPOINT}/wonder/latest.yml"
           echo "check $URL"
           CODE=$(curl -s -o /tmp/latest.yml -w '%{http_code}' "$URL" || echo 000)
           echo "HTTP $CODE"

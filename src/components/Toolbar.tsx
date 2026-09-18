@@ -62,7 +62,7 @@ export function Toolbar({
 
   return (
     <header className="toolbar">
-      <span className="brand">Dojo</span>
+      <span className="brand">Wonder</span>
       <span className="brand-sub">项目编程训练器</span>
       <span className="toolbar-sep" />
       <button className="btn" onClick={onChooseProject}>

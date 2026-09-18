@@ -1,17 +1,17 @@
-# Dojo —— AI 陪练式项目编程训练器
+# Wonder —— AI 陪练式项目编程训练器
 
 一个 **AI 陪练式**桌面软件：陪你从零实现一个个真实软件项目（首个项目：用 C 写一个编译器，输出 x86-64 汇编），
 由大模型（DeepSeek）充当老师，帮你**拆分任务、逐步给提示、评判你的实现**。
 
-## 为什么叫 Dojo
+## 为什么叫 Wonder
 
-「Dojo（道场）」源自日语，指练武、修行、传授技艺的道馆——一个**师徒相传、以练代学**的场域：
+「Wonder」是一个英文单词，本义是**好奇、思考、惊叹**；同时它又谐音中文的「问道」——向师傅请教、探寻方法：
 
-- **有师傅**：道场里有师傅（Sensei）指点徒弟，正如这里由大模型当老师，只给提示、不下场代打；
-- **靠练习**：武术不是听会的，是练会的。编程也一样——代码得你自己写，编译器得你自己实现，AI 只负责拆任务、给反馈；
-- **重道**：中文的「道」也有「方法、路径」之意（如「求道」「得道」），呼应我们追求的是掌握一套**可迁移的工程方法论**，而不是背会某个具体项目。
+- **好奇（Wonder）**：一切编程能力都始于好奇心——想知道编译器是怎么工作的、操作系统如何启动；这里鼓励你多问「为什么」；
+- **问道（谐音）**：AI 是师傅，你是求道者。不会就问，老师给提示、给评判，却不替你写代码；
+- **惊叹（Wonder）**：当你亲手把一个编译器、一个 OS 从零做出来，那种「原来我真的能做到」的惊叹，正是这个名字想带给你的。
 
-所以「Dojo」= 一个由 AI 当师傅、你亲手练、练出真本事的地方。编译器只是道场里的第一课，后面还会有更多项目。
+所以「Wonder」= 带着好奇出发、一路问道、亲手做出让自己惊叹的作品。编译器只是第一课，后面还有更多项目。
 
 ## 功能
 
@@ -59,7 +59,7 @@ git push origin v0.1.0   # 触发 Release
 
 ## 阿里云 OSS 发布 + 自动更新
 
-安装包通过 [electron-updater](https://www.electron.build/auto-update) 自动更新，主源为阿里云 OSS（bucket `fryappstore`，目录 `dojo/`），OSS 不可用时自动回退 GitHub Releases。
+安装包通过 [electron-updater](https://www.electron.build/auto-update) 自动更新，主源为阿里云 OSS（bucket `fryappstore`，目录 `wonder/`），OSS 不可用时自动回退 GitHub Releases。
 
 需要在仓库 `Settings → Secrets and variables → Actions` 配置：
 
@@ -70,18 +70,18 @@ git push origin v0.1.0   # 触发 Release
 | `OSS_BUCKET` | Variables | 默认 `fryappstore` |
 | `OSS_ENDPOINT` | Variables | 默认 `oss-cn-beijing.aliyuncs.com`（按桶所在区域改） |
 
-发布后产物结构（OSS 桶内 `dojo/` 目录）：
+发布后产物结构（OSS 桶内 `wonder/` 目录）：
 
 ```
-dojo/latest.yml                      # 稳定更新指针
-dojo/v0.1.0/Dojo-0.1.0-setup.exe     # 安装包
-dojo/v0.1.0/Dojo-0.1.0-setup.exe.blockmap
+wonder/latest.yml                       # 稳定更新指针
+wonder/v0.1.0/Wonder-0.1.0-setup.exe    # 安装包
+wonder/v0.1.0/Wonder-0.1.0-setup.exe.blockmap
 ```
 
 要点：
-- 桶内 `dojo/` 目录需允许**匿名读取**（公共读），否则客户端下载 403、只能回退 GitHub。
+- 桶内 `wonder/` 目录需允许**匿名读取**（公共读），否则客户端下载 403、只能回退 GitHub。
 - 发新版本：改 `package.json` 的 `version` 后打新 tag，`latest.yml` 会指向新版本。
-- 客户端更新源可用环境变量 `DOJO_UPDATE_MIRROR` 覆盖（完整 URL）。
+- 客户端更新源可用环境变量 `WONDER_UPDATE_MIRROR` 覆盖（完整 URL）。
 
 ## 使用步骤
 

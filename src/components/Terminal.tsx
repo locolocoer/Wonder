@@ -36,7 +36,7 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
 
     const prompt = () => `${cwdRef.current}>`;
 
-    term.writeln('\x1b[90mDojo 终端 — 输入命令后回车执行；Ctrl+C 中断；Ctrl+L 清屏。\x1b[0m');
+    term.writeln('\x1b[90mWonder 终端 — 输入命令后回车执行；Ctrl+C 中断；Ctrl+L 清屏。\x1b[0m');
     term.write(prompt());
 
     const offData = window.api.onEvent('term:data', (text: string) => term.write(text));
