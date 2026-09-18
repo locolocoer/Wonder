@@ -111,11 +111,20 @@ function locateFirst(names, override) {
   return { found: false, path: '', name: names.join('/'), version: '' };
 }
 
-/** 随应用分发的便携 gcc（w64devkit）的 bin 目录，内含 gcc/as/ld/make 等。 */
+/** 随应用分发的便携 gcc（w64devkit）的 bin 目录，内含 gcc/as/ld/make 等。
+ *  开发模式在 appPath/vendor 下；打包后由 extraResources 放在 resources/vendor 下。 */
 function bundledGccBin(appPath) {
-  if (!appPath) return null;
-  const p = path.join(appPath, 'vendor', 'w64devkit', 'bin');
-  return fs.existsSync(p) ? p : null;
+  const candidates = [];
+  if (appPath) candidates.push(path.join(appPath, 'vendor', 'w64devkit', 'bin'));
+  try {
+    if (process.resourcesPath) candidates.push(path.join(process.resourcesPath, 'vendor', 'w64devkit', 'bin'));
+  } catch {
+    /* ignore */
+  }
+  for (const p of candidates) {
+    if (p && fs.existsSync(p)) return p;
+  }
+  return null;
 }
 
 /** 内置 gcc 可执行文件路径。 */

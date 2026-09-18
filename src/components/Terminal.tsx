@@ -104,5 +104,19 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
     };
   }, []);
 
+  // 工程目录变化时：重置会话并让终端 cd 到新目录
+  const prevCwdRef = useRef(initialCwd);
+  useEffect(() => {
+    if (!initialCwd || prevCwdRef.current === initialCwd) return;
+    prevCwdRef.current = initialCwd;
+    cwdRef.current = initialCwd;
+    lineRef.current = '';
+    busyRef.current = false;
+    window.api.termReset();
+    if (termRef.current) {
+      termRef.current.write(`\r\n\x1b[90m[已切换到 ${initialCwd}]\x1b[0m\r\n${initialCwd}>`);
+    }
+  }, [initialCwd]);
+
   return <div className="terminal-xterm" ref={hostRef} />;
 }

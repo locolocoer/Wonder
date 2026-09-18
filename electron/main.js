@@ -237,6 +237,12 @@ function registerIpc() {
     return { ok: true };
   });
 
+  ipcMain.handle('term:reset', () => {
+    if (termSession) termSession.kill();
+    termSession = null;
+    return { ok: true };
+  });
+
   ipcMain.handle('ai:chat', async (_e, payload) => {
     const id = payload.requestId || String(Date.now());
     const controller = new AbortController();

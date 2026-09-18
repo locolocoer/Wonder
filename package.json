@@ -53,8 +53,16 @@
       "electron/**/*",
       "dist-renderer/**/*",
       "starter/**/*",
-      "vendor/**/*",
       "build/icon.png"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor",
+        "to": "vendor",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "directories": {
       "output": "release"

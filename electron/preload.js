@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('api', {
   shellRun: (cmd) => ipcRenderer.invoke('shell:run', cmd),
   termRun: (cmd) => ipcRenderer.invoke('term:run', cmd),
   termKill: () => ipcRenderer.invoke('term:kill'),
+  termReset: () => ipcRenderer.invoke('term:reset'),
 
   updateCheck: () => ipcRenderer.invoke('update:check'),
   updateInstall: () => ipcRenderer.invoke('update:install'),

@@ -133,6 +133,7 @@ declare global {
       shellRun(cmd: string): Promise<{ ok: boolean; code?: number; stdout?: string; stderr?: string; timedOut?: boolean; error?: string }>;
       termRun(cmd: string): Promise<{ ok: boolean }>;
       termKill(): Promise<{ ok: boolean }>;
+      termReset(): Promise<{ ok: boolean }>;
       updateCheck(): Promise<{ ok: boolean }>;
       updateInstall(): Promise<{ ok: boolean }>;
       winMinimize(): Promise<{ ok: boolean }>;
