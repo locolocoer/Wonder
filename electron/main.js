@@ -12,6 +12,7 @@ const buildRunner = require('./build-runner');
 const ai = require('./ai');
 const shellRunner = require('./shell');
 const term = require('./term');
+const updater = require('./updater');
 
 const SCHEME = 'app';
 let mainWindow = null;
@@ -101,6 +102,15 @@ function registerIpc() {
     return { ok: true };
   });
   ipcMain.handle('win:is-maximized', () => (mainWindow ? mainWindow.isMaximized() : false));
+
+  ipcMain.handle('update:check', () => {
+    updater.check();
+    return { ok: true };
+  });
+  ipcMain.handle('update:install', () => {
+    updater.install();
+    return { ok: true };
+  });
 
   ipcMain.handle('app:get-boot', () => {
     return {
@@ -270,6 +280,9 @@ app.whenReady().then(() => {
   registerScheme(path.join(app.getAppPath(), 'dist-renderer'));
   registerIpc();
   createWindow();
+  updater.setWindow(mainWindow);
+  updater.setup();
+  setTimeout(() => updater.check(), 6000); // 启动后延迟检查更新
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

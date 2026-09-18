@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import type { Settings, ToolchainInfo } from '../types';
+import React, { useEffect, useState } from 'react';
+import type { Settings, ToolchainInfo, UpdateStatus } from '../types';
 
 export function SettingsModal({
   settings,
@@ -21,6 +21,34 @@ export function SettingsModal({
   const [ccPath, setCcPath] = useState(settings.toolchain.ccPath);
   const [asmPath, setAsmPath] = useState(settings.toolchain.asmPath);
   const [theme, setTheme] = useState(settings.theme);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
+
+  useEffect(() => {
+    const off = window.api.onEvent('update:status', (s: UpdateStatus) => setUpdateStatus(s));
+    return off;
+  }, []);
+
+  const updateLabel = () => {
+    if (!updateStatus) return null;
+    switch (updateStatus.state) {
+      case 'checking':
+        return '正在检查更新…';
+      case 'available':
+        return `发现新版本 v${updateStatus.version}，正在下载…`;
+      case 'downloading':
+        return `正在下载更新 ${updateStatus.percent ?? 0}%`;
+      case 'downloaded':
+        return `已下载 v${updateStatus.version}，重启应用后自动安装。`;
+      case 'not-available':
+        return '已是最新版本。';
+      case 'dev':
+        return '开发模式，不检查更新。';
+      case 'error':
+        return `更新检查失败：${updateStatus.message || ''}`;
+      default:
+        return null;
+    }
+  };
 
   const save = () => {
     onSave({
@@ -96,6 +124,21 @@ export function SettingsModal({
         <div className="field">
           <label>汇编器路径（可选，运行测试时通常用 gcc 即可）</label>
           <input value={asmPath} onChange={(e) => setAsmPath(e.target.value)} placeholder="例如 C:\...\nasm.exe" />
+        </div>
+
+        <div className="field">
+          <label>自动更新</label>
+          <div className="toolchain-row">
+            <button className="btn" onClick={() => window.api.updateCheck()}>
+              检查更新
+            </button>
+            {updateStatus?.state === 'downloaded' && (
+              <button className="btn primary" onClick={() => window.api.updateInstall()}>
+                重启并安装
+              </button>
+            )}
+          </div>
+          {updateLabel() && <div className="hint">{updateLabel()}</div>}
         </div>
 
         <div className="modal-actions">

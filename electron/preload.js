@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld('api', {
   termRun: (cmd) => ipcRenderer.invoke('term:run', cmd),
   termKill: () => ipcRenderer.invoke('term:kill'),
 
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+
   winMinimize: () => ipcRenderer.invoke('win:minimize'),
   winToggleMaximize: () => ipcRenderer.invoke('win:toggle-maximize'),
   winClose: () => ipcRenderer.invoke('win:close'),

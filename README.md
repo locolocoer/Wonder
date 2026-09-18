@@ -40,12 +40,38 @@ npm run dist       # 用 electron-builder 生成安装包到 release/
 ## CI 打包与发布（GitHub Actions）
 
 - 推送到 `main` 或发起 PR：`.github/workflows/build.yml` 会自动做类型检查、构建安装包，并把产物上传为 Artifact。
-- 推送 `v*` 标签（如 `git tag v0.1.0 && git push origin v0.1.0`）或手动触发 workflow：`.github/workflows/release.yml` 会构建 Windows 安装包并**自动发布 GitHub Release**。
+- 推送 `v*` 标签（如 `git tag v0.1.0 && git push origin v0.1.0`）或手动触发 workflow：`.github/workflows/release.yml` 会构建 Windows 安装包、发布 GitHub Release，并同步到阿里云 OSS。
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0   # 触发 Release
 ```
+
+## 阿里云 OSS 发布 + 自动更新
+
+安装包通过 [electron-updater](https://www.electron.build/auto-update) 自动更新，主源为阿里云 OSS（bucket `fryappstore`，目录 `dojo/`），OSS 不可用时自动回退 GitHub Releases。
+
+需要在仓库 `Settings → Secrets and variables → Actions` 配置：
+
+| 名称 | 位置 | 说明 |
+|---|---|---|
+| `OSS_ACCESS_KEY_ID` | Secrets | 阿里云 AccessKey ID（对 `fryappstore` 桶有写权限） |
+| `OSS_ACCESS_KEY_SECRET` | Secrets | 阿里云 AccessKey Secret |
+| `OSS_BUCKET` | Variables | 默认 `fryappstore` |
+| `OSS_ENDPOINT` | Variables | 默认 `oss-cn-beijing.aliyuncs.com`（按桶所在区域改） |
+
+发布后产物结构（OSS 桶内 `dojo/` 目录）：
+
+```
+dojo/latest.yml                      # 稳定更新指针
+dojo/v0.1.0/Dojo-0.1.0-setup.exe     # 安装包
+dojo/v0.1.0/Dojo-0.1.0-setup.exe.blockmap
+```
+
+要点：
+- 桶内 `dojo/` 目录需允许**匿名读取**（公共读），否则客户端下载 403、只能回退 GitHub。
+- 发新版本：改 `package.json` 的 `version` 后打新 tag，`latest.yml` 会指向新版本。
+- 客户端更新源可用环境变量 `DOJO_UPDATE_MIRROR` 覆盖（完整 URL）。
 
 ## 使用步骤
 

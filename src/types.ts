@@ -101,6 +101,13 @@ export interface BuildLogEntry {
   testId?: string;
 }
 
+export interface UpdateStatus {
+  state: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error' | 'dev';
+  version?: string;
+  percent?: number;
+  message?: string;
+}
+
 export interface FileTab {
   path: string;
   name: string;
@@ -126,6 +133,8 @@ declare global {
       shellRun(cmd: string): Promise<{ ok: boolean; code?: number; stdout?: string; stderr?: string; timedOut?: boolean; error?: string }>;
       termRun(cmd: string): Promise<{ ok: boolean }>;
       termKill(): Promise<{ ok: boolean }>;
+      updateCheck(): Promise<{ ok: boolean }>;
+      updateInstall(): Promise<{ ok: boolean }>;
       winMinimize(): Promise<{ ok: boolean }>;
       winToggleMaximize(): Promise<{ ok: boolean }>;
       winClose(): Promise<{ ok: boolean }>;
