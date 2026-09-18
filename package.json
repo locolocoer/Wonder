@@ -16,7 +16,7 @@
     "dev:web": "vite",
     "build:renderer": "vite build",
     "start": "electron .",
-    "dist": "npm run build:renderer && electron-builder",
+    "dist": "npm run build:renderer && electron-builder --publish never",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
