@@ -1,0 +1,76 @@
+import React from 'react';
+import Editor from '@monaco-editor/react';
+import type { FileTab } from '../types';
+
+export function EditorPane({
+  tabs,
+  activePath,
+  theme,
+  onTabSelect,
+  onTabClose,
+  onChange,
+  onSave,
+}: {
+  tabs: FileTab[];
+  activePath: string;
+  theme: string;
+  onTabSelect: (path: string) => void;
+  onTabClose: (path: string) => void;
+  onChange: (content: string) => void;
+  onSave: () => void;
+}) {
+  const active = tabs.find((t) => t.path === activePath);
+
+  return (
+    <div className="editor-area">
+      <div className="tabs">
+        {tabs.map((t) => (
+          <div key={t.path} className={`tab ${t.path === activePath ? 'active' : ''}`} onClick={() => onTabSelect(t.path)}>
+            <span>{t.name}</span>
+            {t.dirty && <span className="dirty-dot" />}
+            <button
+              className="close"
+              onClick={(e) => {
+                e.stopPropagation();
+                onTabClose(t.path);
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        {tabs.length === 0 && <div className="tab" style={{ color: 'var(--fg-dim)' }}>未打开文件</div>}
+      </div>
+      <div className="editor-host">
+        {active ? (
+          <Editor
+            height="100%"
+            language={active.name.endsWith('.c') || active.name.endsWith('.h') ? 'c' : active.name.endsWith('.md') ? 'markdown' : 'plaintext'}
+            theme={theme}
+            value={active.content}
+            onChange={(v) => onChange(v || '')}
+            onMount={(editor, monaco) => {
+              editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onSave());
+            }}
+            options={{
+              fontSize: 14,
+              minimap: { enabled: true },
+              automaticLayout: true,
+              scrollBeyondLastLine: false,
+              wordWrap: 'off',
+              tabSize: 4,
+              renderWhitespace: 'none',
+              smoothScrolling: true,
+            }}
+          />
+        ) : (
+          <div className="empty-editor">
+            <div className="big">开始实现你的 C 编译器</div>
+            <div>在左侧「文件」页签打开 src/ 下的源文件，或点顶部「初始化起始模板」生成骨架。</div>
+            <div>左侧「课程路线」会一步步引导你从词法分析走到代码生成。</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

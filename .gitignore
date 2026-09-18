@@ -1,0 +1,13 @@
+node_modules/
+dist-renderer/
+release/
+*.log
+.DS_Store
+.vite/
+launch-err.txt
+smoke-out.txt
+smoke-err.txt
+
+# 内置 gcc 工具链体积大（~500MB），不提交进 git；
+# 由 scripts/download-w64devkit.ps1 在本地或 CI 中按需下载。
+vendor/

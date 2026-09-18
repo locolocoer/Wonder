@@ -1,0 +1,64 @@
+{
+  "name": "dojo",
+  "version": "0.1.0",
+  "description": "Dojo - AI-guided project-based coding trainer",
+  "author": "dojo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/locolocoer/Dojo.git"
+  },
+  "homepage": "https://github.com/locolocoer/Dojo",
+  "license": "MIT",
+  "main": "electron/main.js",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n vite,electron -c cyan,magenta \"vite\" \"wait-on tcp:127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "dev:web": "vite",
+    "build:renderer": "vite build",
+    "start": "electron .",
+    "dist": "npm run build:renderer && electron-builder",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.6.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "monaco-editor": "^0.52.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "sharp": "^0.35.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.dojo.trainer",
+    "productName": "Dojo",
+    "copyright": "Copyright 2026 dojo",
+    "files": [
+      "electron/**/*",
+      "dist-renderer/**/*",
+      "starter/**/*",
+      "vendor/**/*",
+      "build/icon.png"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

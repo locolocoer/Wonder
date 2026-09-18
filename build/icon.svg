@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0" stop-color="#2b7de0"/>
+      <stop offset="1" stop-color="#0a3d82"/>
+    </linearGradient>
+  </defs>
+  <!-- 圆角方形背景 -->
+  <rect x="40" y="40" width="944" height="944" rx="216" fill="url(#bg)"/>
+  <!-- 太阳 -->
+  <circle cx="512" cy="470" r="158" fill="#e04b3a"/>
+  <!-- 鸟居：上梁 -->
+  <rect x="226" y="248" width="572" height="82" rx="24" fill="#ffffff"/>
+  <!-- 鸟居：下梁 -->
+  <rect x="256" y="382" width="512" height="54" rx="14" fill="#ffffff"/>
+  <!-- 鸟居：左柱 -->
+  <rect x="316" y="320" width="64" height="444" rx="16" fill="#ffffff"/>
+  <!-- 鸟居：右柱 -->
+  <rect x="644" y="320" width="64" height="444" rx="16" fill="#ffffff"/>
+</svg>
