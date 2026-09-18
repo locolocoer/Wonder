@@ -7,7 +7,7 @@ const { app } = require('electron');
 const UPDATE_MIRROR_DEFAULT = 'https://fryappstore.oss-cn-beijing.aliyuncs.com/wonder/';
 const UPDATE_MIRROR = (process.env.WONDER_UPDATE_MIRROR || UPDATE_MIRROR_DEFAULT).trim();
 const GH_OWNER = 'locolocoer';
-const GH_REPO = 'Dojo';
+const GH_REPO = 'Wonder';
 
 let mainWindow = null;
 let currentFeed = 'mirror';

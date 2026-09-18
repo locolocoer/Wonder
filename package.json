@@ -5,9 +5,9 @@
   "author": "wonder",
   "repository": {
     "type": "git",
-    "url": "https://github.com/locolocoer/Dojo.git"
+    "url": "https://github.com/locolocoer/Wonder.git"
   },
-  "homepage": "https://github.com/locolocoer/Dojo",
+  "homepage": "https://github.com/locolocoer/Wonder",
   "license": "MIT",
   "main": "electron/main.js",
   "private": true,
@@ -74,7 +74,7 @@
     "publish": {
       "provider": "github",
       "owner": "locolocoer",
-      "repo": "Dojo",
+      "repo": "Wonder",
       "releaseType": "release"
     }
   }
