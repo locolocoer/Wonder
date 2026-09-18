@@ -47,6 +47,7 @@
     "appId": "com.dojo.trainer",
     "productName": "Dojo",
     "copyright": "Copyright 2026 dojo",
+    "asar": false,
     "files": [
       "electron/**/*",
       "dist-renderer/**/*",
