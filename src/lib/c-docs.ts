@@ -530,11 +530,396 @@ const CXX_DOCS: Record<string, CDocEntry> = {
     desc: '反转 [first, last) 区间：std::reverse(s.begin(), s.end());',
     url: 'https://zh.cppreference.com/w/cpp/algorithm/reverse',
   },
+  // ---- 容器 ----
+  map: {
+    sig: 'std::map<Key, T>;',
+    desc: '有序键值对容器（红黑树，按键排序）。用 [] / insert 插入，find 查找。',
+    url: 'https://zh.cppreference.com/w/cpp/container/map',
+  },
+  set: {
+    sig: 'std::set<T>;',
+    desc: '有序集合（元素唯一、自动排序）。',
+    url: 'https://zh.cppreference.com/w/cpp/container/set',
+  },
+  unordered_map: {
+    sig: 'std::unordered_map<Key, T>;',
+    desc: '哈希表实现的键值对容器，平均 O(1) 查找。',
+    url: 'https://zh.cppreference.com/w/cpp/container/unordered_map',
+  },
+  unordered_set: {
+    sig: 'std::unordered_set<T>;',
+    desc: '哈希表实现的集合。',
+    url: 'https://zh.cppreference.com/w/cpp/container/unordered_set',
+  },
+  array: {
+    sig: 'std::array<T, N>;',
+    desc: '固定大小数组（栈上），大小在编译期确定。',
+    url: 'https://zh.cppreference.com/w/cpp/container/array',
+  },
+  deque: {
+    sig: 'std::deque<T>;',
+    desc: '双端队列，支持头尾快速插入/删除。',
+    url: 'https://zh.cppreference.com/w/cpp/container/deque',
+  },
+  list: {
+    sig: 'std::list<T>;',
+    desc: '双向链表容器。',
+    url: 'https://zh.cppreference.com/w/cpp/container/list',
+  },
+  stack: {
+    sig: 'std::stack<T>;',
+    desc: '栈（后进先出）：push/pop/top。',
+    url: 'https://zh.cppreference.com/w/cpp/container/stack',
+  },
+  queue: {
+    sig: 'std::queue<T>;',
+    desc: '队列（先进先出）：push/pop/front/back。',
+    url: 'https://zh.cppreference.com/w/cpp/container/queue',
+  },
+  priority_queue: {
+    sig: 'std::priority_queue<T>;',
+    desc: '优先队列（默认大顶堆）：top 取最大元素。',
+    url: 'https://zh.cppreference.com/w/cpp/container/priority_queue',
+  },
+  pair: {
+    sig: 'std::pair<T1, T2>;',
+    desc: '两个值的组合。用 .first / .second 访问，std::make_pair(a, b) 构造。',
+    url: 'https://zh.cppreference.com/w/cpp/utility/pair',
+  },
+  make_pair: {
+    sig: 'std::make_pair(a, b);',
+    desc: '构造 std::pair，自动推导类型。',
+    url: 'https://zh.cppreference.com/w/cpp/utility/pair/make_pair',
+  },
+  tuple: {
+    sig: 'std::tuple<Ts...>;',
+    desc: '固定大小异构值集合。用 std::get<0>(t) 访问。',
+    url: 'https://zh.cppreference.com/w/cpp/utility/tuple',
+  },
+  make_tuple: {
+    sig: 'std::make_tuple(args...);',
+    desc: '构造 std::tuple。',
+    url: 'https://zh.cppreference.com/w/cpp/utility/tuple/make_tuple',
+  },
+  tie: {
+    sig: 'std::tie(args...);',
+    desc: '生成左值引用组成的 tuple（常用于多返回值解包）。',
+    url: 'https://zh.cppreference.com/w/cpp/utility/tuple/tie',
+  },
+  // ---- 算法 / 数值 ----
+  min: {
+    sig: 'const T& min(const T& a, const T& b);',
+    desc: '返回两个值中较小的一个。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/min',
+  },
+  max: {
+    sig: 'const T& max(const T& a, const T& b);',
+    desc: '返回两个值中较大的一个。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/max',
+  },
+  abs: {
+    sig: 'int abs(int n);  // <cstdlib>；浮点用 std::abs（<cmath>）',
+    desc: '返回绝对值。',
+    url: 'https://zh.cppreference.com/w/cpp/numeric/math/abs',
+  },
+  pow: {
+    sig: 'double pow(double base, double exp);',
+    desc: '返回 base 的 exp 次方。',
+    url: 'https://zh.cppreference.com/w/cpp/numeric/math/pow',
+  },
+  sqrt: {
+    sig: 'double sqrt(double x);',
+    desc: '返回 x 的平方根。',
+    url: 'https://zh.cppreference.com/w/cpp/numeric/math/sqrt',
+  },
+  floor: {
+    sig: 'double floor(double x);',
+    desc: '向下取整。',
+    url: 'https://zh.cppreference.com/w/cpp/numeric/math/floor',
+  },
+  ceil: {
+    sig: 'double ceil(double x);',
+    desc: '向上取整。',
+    url: 'https://zh.cppreference.com/w/cpp/numeric/math/ceil',
+  },
+  round: {
+    sig: 'double round(double x);',
+    desc: '四舍五入。',
+    url: 'https://zh.cppreference.com/w/cpp/numeric/math/round',
+  },
+  find_if: {
+    sig: 'InputIt find_if(InputIt first, InputIt last, UnaryPredicate p);',
+    desc: '查找第一个满足条件的元素，返回迭代器。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/find',
+  },
+  count: {
+    sig: 'size_t count(InputIt first, InputIt last, const T& value);',
+    desc: '统计区间内等于 value 的元素个数。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/count',
+  },
+  count_if: {
+    sig: 'size_t count_if(InputIt first, InputIt last, UnaryPredicate p);',
+    desc: '统计满足条件的元素个数。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/count',
+  },
+  transform: {
+    sig: 'OutputIt transform(InputIt first, InputIt last, OutputIt out, UnaryOp op);',
+    desc: '对区间每个元素应用 op 并写入 out。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/transform',
+  },
+  for_each: {
+    sig: 'UnaryOp for_each(InputIt first, InputIt last, UnaryOp f);',
+    desc: '对区间每个元素调用 f。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/for_each',
+  },
+  copy: {
+    sig: 'OutputIt copy(InputIt first, InputIt last, OutputIt out);',
+    desc: '把 [first, last) 复制到 out。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/copy',
+  },
+  fill: {
+    sig: 'void fill(ForwardIt first, ForwardIt last, const T& value);',
+    desc: '把 [first, last) 全部赋值为 value。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/fill',
+  },
+  remove: {
+    sig: 'ForwardIt remove(ForwardIt first, ForwardIt last, const T& value);',
+    desc: '移除等于 value 的元素（配合 erase 使用：v.erase(remove(...), v.end())）。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/remove',
+  },
+  unique: {
+    sig: 'ForwardIt unique(ForwardIt first, ForwardIt last);',
+    desc: '去除相邻重复元素（通常先 sort 再 unique）。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/unique',
+  },
+  lower_bound: {
+    sig: 'ForwardIt lower_bound(ForwardIt first, ForwardIt last, const T& value);',
+    desc: '返回第一个不小于 value 的位置（要求区间有序）。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/lower_bound',
+  },
+  upper_bound: {
+    sig: 'ForwardIt upper_bound(ForwardIt first, ForwardIt last, const T& value);',
+    desc: '返回第一个大于 value 的位置（要求区间有序）。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/upper_bound',
+  },
+  binary_search: {
+    sig: 'bool binary_search(ForwardIt first, ForwardIt last, const T& value);',
+    desc: '二分查找 value 是否存在（要求区间有序）。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/binary_search',
+  },
+  accumulate: {
+    sig: 'T accumulate(InputIt first, InputIt last, T init);',
+    desc: '对区间求和（需 <numeric>）：std::accumulate(v.begin(), v.end(), 0);',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/accumulate',
+  },
+  iota: {
+    sig: 'void iota(ForwardIt first, ForwardIt last, T value);',
+    desc: '用递增的 value 填充区间（需 <numeric>）。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/iota',
+  },
+  // ---- 迭代器 / 智能指针 / 函数 ----
+  istream_iterator: {
+    sig: 'std::istream_iterator<T>(istream& s);',
+    desc: '从输入流按 >> 读取的迭代器。',
+    url: 'https://zh.cppreference.com/w/cpp/iterator/istream_iterator',
+  },
+  ostream_iterator: {
+    sig: 'std::ostream_iterator<T>(ostream& s, const char* delim = "");',
+    desc: '向输出流用 << 写入的迭代器。',
+    url: 'https://zh.cppreference.com/w/cpp/iterator/ostream_iterator',
+  },
+  back_inserter: {
+    sig: 'std::back_inserter(Container& c);',
+    desc: '生成在容器末尾插入的迭代器（配合 copy/transform 用）。',
+    url: 'https://zh.cppreference.com/w/cpp/iterator/back_inserter',
+  },
+  next: {
+    sig: 'ForwardIt next(ForwardIt it, size_t n = 1);',
+    desc: '返回 it 前进 n 步的迭代器（需 <iterator>）。',
+    url: 'https://zh.cppreference.com/w/cpp/iterator/next',
+  },
+  prev: {
+    sig: 'BidirectionalIt prev(BidirectionalIt it, size_t n = 1);',
+    desc: '返回 it 后退 n 步的迭代器。',
+    url: 'https://zh.cppreference.com/w/cpp/iterator/prev',
+  },
+  advance: {
+    sig: 'void advance(InputIt& it, size_t n);',
+    desc: '让迭代器 it 前进 n 步。',
+    url: 'https://zh.cppreference.com/w/cpp/iterator/advance',
+  },
+  distance: {
+    sig: 'size_t distance(InputIt first, InputIt last);',
+    desc: '返回两个迭代器之间的元素个数。',
+    url: 'https://zh.cppreference.com/w/cpp/iterator/distance',
+  },
+  weak_ptr: {
+    sig: 'std::weak_ptr<T>;',
+    desc: '不增加引用计数的弱引用，配合 shared_ptr 使用。',
+    url: 'https://zh.cppreference.com/w/cpp/memory/weak_ptr',
+  },
+  reset: {
+    sig: 'void reset(pointer p = pointer());',
+    desc: '重置智能指针（释放当前对象，可换成新指针）。',
+    url: 'https://zh.cppreference.com/w/cpp/memory/unique_ptr/reset',
+  },
+  release: {
+    sig: 'pointer release();',
+    desc: '释放所有权但不 delete，返回裸指针。',
+    url: 'https://zh.cppreference.com/w/cpp/memory/unique_ptr/release',
+  },
+  function: {
+    sig: 'std::function<R(Args...)>;',
+    desc: '可存储任意可调用对象（函数、lambda、函数对象）的包装。',
+    url: 'https://zh.cppreference.com/w/cpp/utility/functional/function',
+  },
+  bind: {
+    sig: 'std::bind(f, args...);',
+    desc: '绑定函数参数，生成可调用对象。',
+    url: 'https://zh.cppreference.com/w/cpp/utility/functional/bind',
+  },
+  greater: {
+    sig: 'std::greater<T>;',
+    desc: '比较函数对象（>），常用于优先队列/排序自定义顺序。',
+    url: 'https://zh.cppreference.com/w/cpp/utility/functional/greater',
+  },
+  less: {
+    sig: 'std::less<T>;',
+    desc: '比较函数对象（<），默认排序使用。',
+    url: 'https://zh.cppreference.com/w/cpp/utility/functional/less',
+  },
+  // ---- 输入输出操纵符 ----
+  fixed: {
+    sig: 'std::fixed;',
+    desc: '以固定小数点格式输出浮点数：std::cout << std::fixed;',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/fixed',
+  },
+  scientific: {
+    sig: 'std::scientific;',
+    desc: '以科学计数法输出浮点数。',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/scientific',
+  },
+  hex: {
+    sig: 'std::hex;',
+    desc: '以十六进制输出整数：std::cout << std::hex << n;',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/hex',
+  },
+  dec: {
+    sig: 'std::dec;',
+    desc: '以十进制输出整数。',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/dec',
+  },
+  oct: {
+    sig: 'std::oct;',
+    desc: '以八进制输出整数。',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/oct',
+  },
+  boolalpha: {
+    sig: 'std::boolalpha;',
+    desc: '以 true/false 输出布尔值。',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/boolalpha',
+  },
+  setw: {
+    sig: 'std::setw(int n);',
+    desc: '设置下一次输出的最小宽度（需 <iomanip>）。',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/setw',
+  },
+  setprecision: {
+    sig: 'std::setprecision(int n);',
+    desc: '设置浮点输出精度（需 <iomanip>）。',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/setprecision',
+  },
+  setfill: {
+    sig: 'std::setfill(char c);',
+    desc: '设置填充字符（配合 setw 使用）。',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/setfill',
+  },
+  ws: {
+    sig: 'std::ws;',
+    desc: '从输入流跳过前导空白。',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/ws',
+  },
+  flush: {
+    sig: 'std::flush;',
+    desc: '刷新输出流缓冲区：std::cout << std::flush;',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/flush',
+  },
+  rdbuf: {
+    sig: 'std::streambuf* rdbuf() const;',
+    desc: '返回流的底层缓冲区（如 in.rdbuf()）。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_ios/rdbuf',
+  },
+  str: {
+    sig: 'std::string str() const;  // 或 void str(const std::string&);',
+    desc: '获取/设置 stringstream 的底层字符串。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_stringstream/str',
+  },
+  swap: {
+    sig: 'void swap(T& a, T& b);  // 或成员 swap(other)',
+    desc: '交换两个值/两个容器的内容。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/swap',
+  },
+  emplace: {
+    sig: 'iterator emplace(const_iterator pos, Args&&... args);',
+    desc: '在容器指定位置就地构造元素。',
+    url: 'https://zh.cppreference.com/w/cpp/container/vector/emplace',
+  },
+  push_front: {
+    sig: 'void push_front(const T& value);',
+    desc: '在容器头部插入元素（deque/list）。',
+    url: 'https://zh.cppreference.com/w/cpp/container/deque/push_front',
+  },
+  pop_front: {
+    sig: 'void pop_front();',
+    desc: '移除容器头部元素（deque/list）。',
+    url: 'https://zh.cppreference.com/w/cpp/container/deque/pop_front',
+  },
+  find_first_of: {
+    sig: 'size_type find_first_of(const std::string& str, size_type pos = 0) const;',
+    desc: '查找第一个属于 str 中任意字符的位置。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/find_first_of',
+  },
+  find_last_of: {
+    sig: 'size_type find_last_of(const std::string& str, size_type pos = npos) const;',
+    desc: '从后往前查找第一个属于 str 中任意字符的位置。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/find_last_of',
+  },
+  find_first_not_of: {
+    sig: 'size_type find_first_not_of(const std::string& str, size_type pos = 0) const;',
+    desc: '查找第一个不属于 str 中任意字符的位置。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/find_first_not_of',
+  },
+  find_last_not_of: {
+    sig: 'size_type find_last_not_of(const std::string& str, size_type pos = npos) const;',
+    desc: '从后往前查找第一个不属于 str 中任意字符的位置。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/find_last_not_of',
+  },
+  starts_with: {
+    sig: 'bool starts_with(const std::string& str) const;  // C++20',
+    desc: '判断字符串是否以 str 开头。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/starts_with',
+  },
+  ends_with: {
+    sig: 'bool ends_with(const std::string& str) const;  // C++20',
+    desc: '判断字符串是否以 str 结尾。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/ends_with',
+  },
+  contains: {
+    sig: 'bool contains(const std::string& str) const;  // C++23',
+    desc: '判断字符串是否包含子串 str。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/contains',
+  },
 };
 
-/** 供应用内文档面板查询函数说明。 */
+/** 供应用内文档面板查询函数说明。未收录的 std:: 符号给一个通用兜底（跳到 cppreference 搜索）。 */
 export function getCDoc(name: string): CDocEntry | undefined {
-  return DOCS[name] || CXX_DOCS[name];
+  const d = DOCS[name] || CXX_DOCS[name];
+  if (d) return d;
+  return {
+    sig: `std::${name};`,
+    desc: '标准库符号（暂未收录详细中文说明）。点击下方按钮在 cppreference 查看完整文档。',
+    url: 'https://zh.cppreference.com/w/cpp?search=' + encodeURIComponent(name),
+  };
 }
 
 // C 关键字（用于代码补全）
@@ -562,13 +947,17 @@ export function registerCDocs(): void {
     provideHover(model, position) {
       const word = model.getWordAtPosition(position);
       if (!word) return null;
+      const line = model.getLineContent(position.lineNumber);
+      const before = line.slice(0, word.startColumn - 1);
+      const isStd = before.endsWith('std::');
       const d = docs[word.word];
-      if (!d) return null;
+      if (!d && !isStd) return null;
+      const value = d
+        ? `\`\`\`c\n${d.sig}\n\`\`\`\n\n${d.desc}\n\n*按住 Ctrl 点击可在应用内查看文档*`
+        : `\`std::${word.word}\` 是标准库符号。\n\n*按住 Ctrl 点击可在应用内查看文档 / 跳转 cppreference*`;
       return {
         range: new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn),
-        contents: [
-          { value: `\`\`\`c\n${d.sig}\n\`\`\`\n\n${d.desc}\n\n*按住 Ctrl 点击可在应用内查看文档*` },
-        ],
+        contents: [{ value }],
       };
     },
   });
@@ -577,7 +966,10 @@ export function registerCDocs(): void {
     provideDefinition(model, position) {
       const word = model.getWordAtPosition(position);
       if (!word) return null;
-      if (!docs[word.word]) return null;
+      const line = model.getLineContent(position.lineNumber);
+      const before = line.slice(0, word.startColumn - 1);
+      const isStd = before.endsWith('std::');
+      if (!docs[word.word] && !isStd) return null;
       return {
         uri: monaco.Uri.from({ scheme: 'wonder-doc', path: '/' + word.word }),
         range: new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn),
