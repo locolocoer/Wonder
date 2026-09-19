@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import type { FileTab } from '../types';
 
@@ -20,6 +20,11 @@ export function EditorPane({
   onSave: () => void;
 }) {
   const active = tabs.find((t) => t.path === activePath);
+
+  // Monaco 的 addCommand 在挂载时只注册一次，闭包会捕获旧的 onSave；
+  // 用 ref 保存最新引用，确保 Ctrl+S 永远保存「当前」激活的标签。
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
 
   const langFor = (name: string): string => {
     const n = name.toLowerCase();
@@ -64,7 +69,7 @@ export function EditorPane({
             value={active.content}
             onChange={(v) => onChange(v || '')}
             onMount={(editor, monaco) => {
-              editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onSave());
+              editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onSaveRef.current());
             }}
             options={{
               fontSize: 14,
