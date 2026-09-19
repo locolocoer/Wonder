@@ -370,6 +370,166 @@ const CXX_DOCS: Record<string, CDocEntry> = {
     desc: '返回 C 风格字符串（const char*），供需要 C 接口的地方使用。',
     url: 'https://zh.cppreference.com/w/cpp/string/basic_string/c_str',
   },
+  assign: {
+    sig: 'std::string& assign(const std::string& str);  // 另有 assign(迭代器区间)/assign(n, ch)/assign(位置, 长度) 重载',
+    desc: '把内容赋给 string：可整体赋值、按区间（如 assign(istreambuf_iterator, {}) 读整个文件）、按 n 个字符、按子串位置等。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/assign',
+  },
+  append: {
+    sig: 'std::string& append(const std::string& str);',
+    desc: '在字符串末尾追加内容（等价于 +=）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/append',
+  },
+  insert: {
+    sig: 'std::string& insert(size_type pos, const std::string& str);',
+    desc: '在指定位置插入内容（string/vector 都支持）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/insert',
+  },
+  erase: {
+    sig: 'std::string& erase(size_type pos = 0, size_type count = npos);',
+    desc: '删除指定区间的内容（string/vector 都支持）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/erase',
+  },
+  replace: {
+    sig: 'std::string& replace(size_type pos, size_type count, const std::string& str);',
+    desc: '用新内容替换 [pos, pos+count) 区间。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/replace',
+  },
+  rfind: {
+    sig: 'size_type rfind(const std::string& str, size_type pos = npos) const;',
+    desc: '从后往前查找子串，返回最后一次出现位置。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/rfind',
+  },
+  compare: {
+    sig: 'int compare(const std::string& str) const;',
+    desc: '比较两个字符串，相等返回 0，小于返回负数，大于返回正数。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/compare',
+  },
+  empty: {
+    sig: 'bool empty() const;',
+    desc: '判断字符串/容器是否为空。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/empty',
+  },
+  clear: {
+    sig: 'void clear();',
+    desc: '清空字符串/容器的所有内容。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/clear',
+  },
+  resize: {
+    sig: 'void resize(size_type count);',
+    desc: '调整字符串/容器的大小（string/vector）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/resize',
+  },
+  reserve: {
+    sig: 'void reserve(size_type new_cap);',
+    desc: '预留容量，避免反复重新分配（string/vector）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/reserve',
+  },
+  at: {
+    sig: 'CharT& at(size_type pos);',
+    desc: '按下标访问元素并做边界检查（越界抛异常）（string/vector）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/at',
+  },
+  front: {
+    sig: 'CharT& front();',
+    desc: '返回第一个元素的引用（string/vector）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/front',
+  },
+  begin: {
+    sig: 'iterator begin();',
+    desc: '返回指向首元素的迭代器（string/vector）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/begin',
+  },
+  end: {
+    sig: 'iterator end();',
+    desc: '返回指向末尾（最后一个元素之后）的迭代器。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/end',
+  },
+  data: {
+    sig: 'CharT* data();',
+    desc: '返回底层字符数组指针（string/vector）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/data',
+  },
+  emplace_back: {
+    sig: 'void emplace_back(Args&&... args);',
+    desc: '在 vector 末尾就地构造一个元素（比 push_back 少一次拷贝）。',
+    url: 'https://zh.cppreference.com/w/cpp/container/vector/emplace_back',
+  },
+  fstream: {
+    sig: 'std::fstream;',
+    desc: '文件流，可同时读写。用 .open(path, mode) 打开。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_fstream',
+  },
+  stringstream: {
+    sig: 'std::stringstream;',
+    desc: '字符串流，可读写字符串。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_stringstream',
+  },
+  istreambuf_iterator: {
+    sig: 'std::istreambuf_iterator<CharT>(istream& s);',
+    desc: '流缓冲区输入迭代器，配合 assign 可一次读入整个文件：out.assign(std::istreambuf_iterator<char>(in), {});',
+    url: 'https://zh.cppreference.com/w/cpp/iterator/istreambuf_iterator',
+  },
+  ostreambuf_iterator: {
+    sig: 'std::ostreambuf_iterator<CharT>(ostream& s);',
+    desc: '流缓冲区输出迭代器，用于把内容写入输出流。',
+    url: 'https://zh.cppreference.com/w/cpp/iterator/ostreambuf_iterator',
+  },
+  open: {
+    sig: 'void open(const std::string& path, ios_base::openmode mode);',
+    desc: '打开文件流（ifstream/ofstream/fstream）。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_ifstream/open',
+  },
+  is_open: {
+    sig: 'bool is_open() const;',
+    desc: '判断文件流是否已成功打开。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_ifstream/is_open',
+  },
+  close: {
+    sig: 'void close();',
+    desc: '关闭文件流。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_ifstream/close',
+  },
+  good: {
+    sig: 'bool good() const;',
+    desc: '判断流是否处于正常状态。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_ios/good',
+  },
+  eof: {
+    sig: 'bool eof() const;',
+    desc: '判断是否读到文件末尾。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_ios/eof',
+  },
+  fail: {
+    sig: 'bool fail() const;',
+    desc: '判断流是否发生错误。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_ios/fail',
+  },
+  read: {
+    sig: 'istream& read(char* s, streamsize count);',
+    desc: '从流读取 count 个字符到缓冲区。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_istream/read',
+  },
+  write: {
+    sig: 'ostream& write(const char* s, streamsize count);',
+    desc: '把 count 个字符写入流。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_ostream/write',
+  },
+  get: {
+    sig: 'int get();  // 或 istream& get(char& c);',
+    desc: '从流读取一个字符。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_istream/get',
+  },
+  ignore: {
+    sig: 'istream& ignore(streamsize count = 1, int delim = EOF);',
+    desc: '跳过流中最多 count 个字符或直到分隔符。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_istream/ignore',
+  },
+  reverse: {
+    sig: 'void reverse(BidirectionalIt first, BidirectionalIt last);',
+    desc: '反转 [first, last) 区间：std::reverse(s.begin(), s.end());',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/reverse',
+  },
 };
 
 /** 供应用内文档面板查询函数说明。 */
