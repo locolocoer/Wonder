@@ -4,7 +4,8 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 
 // 基于 xterm.js 的终端（VS Code 同款渲染），后端为 cmd 命令会话。
-// 支持：Ctrl+C 复制（选中时）/ 中断、Ctrl+Shift+C/V 复制粘贴、Ctrl+V 粘贴、↑↓ 历史命令、Ctrl+L 清屏。
+// 支持：Ctrl+C 复制（选中时）/ 中断、Ctrl+Shift+C/V 复制粘贴、Ctrl+V 粘贴、
+//       ↑↓ 历史命令、←→ 移动光标、Home/End 行首行尾、Ctrl+L 清屏。
 const HIST_KEY = 'term-history';
 function loadHistory(): string[] {
   try {
@@ -27,6 +28,7 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
   const termRef = useRef<XTerm | null>(null);
   const cwdRef = useRef(initialCwd || 'C:\\');
   const lineRef = useRef('');
+  const cursorRef = useRef(0);
   const busyRef = useRef(false);
   const historyRef = useRef<string[]>([]);
   const histIdxRef = useRef(-1);
@@ -54,13 +56,19 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
     termRef.current = term;
 
     const prompt = () => `${cwdRef.current}>`;
-    const redrawLine = () => term.write('\r\x1b[K' + prompt() + lineRef.current);
+    // 重绘当前输入行，并把光标定位到 cursorRef 处
+    const redrawLine = () => {
+      term.write('\r\x1b[K' + prompt() + lineRef.current);
+      const back = lineRef.current.length - cursorRef.current;
+      if (back > 0) term.write('\x1b[' + back + 'D');
+    };
 
     const historyUp = () => {
       if (historyRef.current.length === 0) return;
       if (histIdxRef.current === -1) histIdxRef.current = historyRef.current.length - 1;
       else if (histIdxRef.current > 0) histIdxRef.current--;
       lineRef.current = historyRef.current[histIdxRef.current];
+      cursorRef.current = lineRef.current.length;
       redrawLine();
     };
     const historyDown = () => {
@@ -72,13 +80,56 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
         histIdxRef.current = -1;
         lineRef.current = '';
       }
+      cursorRef.current = lineRef.current.length;
+      redrawLine();
+    };
+    const cursorLeft = () => {
+      if (cursorRef.current > 0) {
+        cursorRef.current--;
+        term.write('\x1b[D');
+      }
+    };
+    const cursorRight = () => {
+      if (cursorRef.current < lineRef.current.length) {
+        cursorRef.current++;
+        term.write('\x1b[C');
+      }
+    };
+    const cursorHome = () => {
+      if (cursorRef.current > 0) {
+        term.write('\x1b[' + cursorRef.current + 'D');
+        cursorRef.current = 0;
+      }
+    };
+    const cursorEnd = () => {
+      if (cursorRef.current < lineRef.current.length) {
+        term.write('\x1b[' + (lineRef.current.length - cursorRef.current) + 'C');
+        cursorRef.current = lineRef.current.length;
+      }
+    };
+    const backspace = () => {
+      if (cursorRef.current > 0) {
+        lineRef.current = lineRef.current.slice(0, cursorRef.current - 1) + lineRef.current.slice(cursorRef.current);
+        cursorRef.current--;
+        redrawLine();
+      }
+    };
+    const deleteChar = () => {
+      if (cursorRef.current < lineRef.current.length) {
+        lineRef.current = lineRef.current.slice(0, cursorRef.current) + lineRef.current.slice(cursorRef.current + 1);
+        redrawLine();
+      }
+    };
+    const insertChar = (ch: string) => {
+      lineRef.current = lineRef.current.slice(0, cursorRef.current) + ch + lineRef.current.slice(cursorRef.current);
+      cursorRef.current++;
       redrawLine();
     };
 
-    term.writeln('\x1b[90mWonder 终端 — 回车执行；Ctrl+C 中断；Ctrl+L 清屏；选中文字后 Ctrl+C 复制；↑↓ 历史命令。\x1b[0m');
+    term.writeln('\x1b[90mWonder 终端 — 回车执行；Ctrl+C 中断；Ctrl+L 清屏；↑↓ 历史；←→ 移动光标；选中后 Ctrl+C 复制。\x1b[0m');
     term.write(prompt());
 
-    // 键盘钩子：处理复制/粘贴/历史，优先级高于 xterm 默认行为
+    // 键盘钩子：处理复制/粘贴/历史/光标移动，优先级高于 xterm 默认行为
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true;
       const key = e.key.toLowerCase();
@@ -108,12 +159,37 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        historyUp();
+        if (!busyRef.current) historyUp();
         return false;
       }
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        historyDown();
+        if (!busyRef.current) historyDown();
+        return false;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (!busyRef.current) cursorLeft();
+        return false;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (!busyRef.current) cursorRight();
+        return false;
+      }
+      if (e.key === 'Home') {
+        e.preventDefault();
+        if (!busyRef.current) cursorHome();
+        return false;
+      }
+      if (e.key === 'End') {
+        e.preventDefault();
+        if (!busyRef.current) cursorEnd();
+        return false;
+      }
+      if (e.key === 'Delete') {
+        e.preventDefault();
+        if (!busyRef.current) deleteChar();
         return false;
       }
       return true;
@@ -139,6 +215,7 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
           const line = lineRef.current;
           term.write('\r\n');
           lineRef.current = '';
+          cursorRef.current = 0;
           if (line.trim()) {
             historyRef.current.push(line);
             saveHistory(historyRef.current);
@@ -149,20 +226,17 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
             term.write(prompt());
           }
         } else if (ch === '\x7f' || ch === '\b') {
-          if (lineRef.current.length > 0) {
-            lineRef.current = lineRef.current.slice(0, -1);
-            term.write('\b \b');
-          }
+          backspace();
         } else if (ch === '\x03') {
           term.write('^C\r\n');
           lineRef.current = '';
+          cursorRef.current = 0;
           term.write(prompt());
         } else if (ch === '\x0c') {
           term.clear();
           term.write(prompt());
         } else if (ch >= ' ') {
-          lineRef.current += ch;
-          term.write(ch);
+          insertChar(ch);
         }
       }
     });
@@ -193,6 +267,7 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
     prevCwdRef.current = initialCwd;
     cwdRef.current = initialCwd;
     lineRef.current = '';
+    cursorRef.current = 0;
     busyRef.current = false;
     window.api.termReset();
     if (termRef.current) {

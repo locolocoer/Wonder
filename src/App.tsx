@@ -321,19 +321,44 @@ export default function App() {
     });
   };
 
+  const openReadOnlyTab = useCallback((path: string, name: string, content: string) => {
+    setTabs((prev) => {
+      if (prev.some((t) => t.path === path)) return prev;
+      return [...prev, { path, name, content, dirty: false, readOnly: true }];
+    });
+    setActivePath(path);
+  }, []);
+
   const openReference = async () => {
     const r = await window.api.readReference();
     if (!r.ok) {
       await window.api.dialogMessage({ type: 'error', message: r.error || '读取失败' });
       return;
     }
-    const refPath = '[参考答案] mycc.c';
-    setTabs((prev) => {
-      if (prev.some((t) => t.path === refPath)) return prev;
-      return [...prev, { path: refPath, name: 'mycc.c（参考答案）', content: r.content || '', dirty: false, readOnly: true }];
-    });
-    setActivePath(refPath);
+    openReadOnlyTab('[参考答案] mycc.c', 'mycc.c（参考答案）', r.content || '');
   };
+
+  // Ctrl+点击 #include 头文件 → 应用内只读打开头文件
+  const openHeader = useCallback(
+    async (kind: 'sys' | 'local', name: string) => {
+      const r = await window.api.openHeader({ kind, name, basePath: activePath });
+      if (!r.ok || !r.path) {
+        await window.api.dialogMessage({ type: 'error', message: r.error || '无法打开头文件' });
+        return;
+      }
+      openReadOnlyTab(r.path, `${r.name || name}（头文件）`, r.content || '');
+    },
+    [activePath, openReadOnlyTab]
+  );
+
+  useEffect(() => {
+    const onHeaderOpen = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.name) openHeader(detail.kind === 'local' ? 'local' : 'sys', detail.name);
+    };
+    window.addEventListener('wonder-header-open', onHeaderOpen);
+    return () => window.removeEventListener('wonder-header-open', onHeaderOpen);
+  }, [openHeader]);
 
   const createFile = async (path: string, kind: 'file' | 'dir') => {
     const r = await window.api.projectCreate(path, kind);

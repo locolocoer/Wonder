@@ -238,6 +238,14 @@ const DOCS: Record<string, CDocEntry> = {
   },
 };
 
+// C 关键字（用于代码补全）
+const C_KEYWORDS: string[] = [
+  'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do',
+  'double', 'else', 'enum', 'extern', 'float', 'for', 'goto', 'if', 'inline',
+  'int', 'long', 'register', 'restrict', 'return', 'short', 'signed', 'sizeof',
+  'static', 'struct', 'switch', 'typedef', 'union', 'unsigned', 'void', 'volatile', 'while',
+];
+
 let registered = false;
 
 export function registerCDocs(): void {
@@ -272,18 +280,75 @@ export function registerCDocs(): void {
     },
   };
 
+  // #include 行内 Ctrl+点击 → 打开头文件
+  const headerProvider: monaco.languages.DefinitionProvider = {
+    provideDefinition(model, position) {
+      const line = model.getLineContent(position.lineNumber);
+      const m = /^\s*#\s*include\s*([<"])([^>"]+)[>"]/.exec(line);
+      if (!m) return null;
+      const delim = m[1];
+      const name = m[2];
+      const matchStart = m.index ?? 0;
+      const startCol = matchStart + m[0].indexOf(delim) + 1; // 头文件名起始列（0 基）
+      const endCol = startCol + name.length;
+      const col = position.column - 1;
+      if (col < startCol || col > endCol) return null;
+      return {
+        uri: monaco.Uri.from({ scheme: 'wonder-header', authority: delim === '<' ? 'sys' : 'local', path: '/' + name }),
+        range: new monaco.Range(position.lineNumber, startCol + 1, position.lineNumber, endCol + 1),
+      };
+    },
+  };
+
+  // 代码补全：C 关键字 + 标准库函数（带签名与说明）
+  const completionProvider: monaco.languages.CompletionItemProvider = {
+    provideCompletionItems(model, position) {
+      const word = model.getWordUntilPosition(position);
+      const range = new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn);
+      const prefix = word.word.toLowerCase();
+      const suggestions: monaco.languages.CompletionItem[] = [];
+      for (const kw of C_KEYWORDS) {
+        if (kw.startsWith(prefix)) {
+          suggestions.push({ label: kw, kind: monaco.languages.CompletionItemKind.Keyword, insertText: kw, range });
+        }
+      }
+      for (const [name, d] of Object.entries(DOCS)) {
+        if (name.startsWith(prefix)) {
+          suggestions.push({
+            label: name,
+            kind: monaco.languages.CompletionItemKind.Function,
+            insertText: name,
+            detail: d.sig,
+            documentation: { value: '```c\n' + d.sig + '\n```\n\n' + d.desc },
+            range,
+          });
+        }
+      }
+      return { suggestions };
+    },
+  };
+
   for (const lang of ['c', 'cpp']) {
     monaco.languages.registerHoverProvider(lang, hoverProvider);
     monaco.languages.registerDefinitionProvider(lang, definitionProvider);
+    monaco.languages.registerDefinitionProvider(lang, headerProvider);
+    monaco.languages.registerCompletionItemProvider(lang, completionProvider);
   }
 
-  // Ctrl+点击（跳转到定义）时，拦截自定义的 wonder-doc 地址，
-  // 通过事件通知 React 打开应用内文档面板（不再跳系统浏览器）。
+  // Ctrl+点击（跳转到定义）时，拦截自定义的 wonder-doc / wonder-header 地址，
+  // 通过事件通知 React 打开应用内文档面板或头文件（不再跳系统浏览器）。
   monaco.editor.registerEditorOpener({
     openCodeEditor(_source, resource) {
-      if (resource && resource.scheme === 'wonder-doc') {
+      if (!resource) return false;
+      if (resource.scheme === 'wonder-doc') {
         const name = decodeURIComponent(resource.path.replace(/^\//, ''));
         window.dispatchEvent(new CustomEvent('wonder-doc-open', { detail: { name } }));
+        return true;
+      }
+      if (resource.scheme === 'wonder-header') {
+        const kind = resource.authority; // 'sys' | 'local'
+        const name = decodeURIComponent(resource.path.replace(/^\//, ''));
+        window.dispatchEvent(new CustomEvent('wonder-header-open', { detail: { kind, name } }));
         return true;
       }
       return false;

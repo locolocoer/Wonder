@@ -251,6 +251,43 @@ function registerIpc() {
     }
   });
 
+  // Ctrl+点击 #include 头文件：解析并读取头文件内容（系统头文件从内置 gcc 里找，本地头文件按当前文件目录找）
+  ipcMain.handle('app:open-header', (_e, payload = {}) => {
+    const kind = payload.kind === 'local' ? 'local' : 'sys';
+    const name = String(payload.name || '').replace(/\\/g, '/');
+    if (!name) return { ok: false, error: '无效的头文件名' };
+
+    let full = null;
+    if (kind === 'sys') {
+      const incDirs = [];
+      const gccBin = toolchain.bundledGccBin(app.getAppPath());
+      if (gccBin) incDirs.push(path.join(path.dirname(gccBin), '..', 'include'));
+      if (app.getAppPath()) incDirs.push(path.join(app.getAppPath(), 'vendor', 'w64devkit', 'include'));
+      for (const d of incDirs) {
+        const p = path.join(d, name);
+        if (fs.existsSync(p)) {
+          full = p;
+          break;
+        }
+      }
+    } else if (settings.projectDir) {
+      const base = payload.basePath
+        ? path.dirname(path.resolve(settings.projectDir, String(payload.basePath)))
+        : settings.projectDir;
+      const p = path.resolve(base, name);
+      if (fs.existsSync(p)) full = p;
+    }
+
+    if (!full) return { ok: false, error: `找不到头文件 ${name}` };
+    try {
+      const stat = fs.statSync(full);
+      if (stat.size > 2 * 1024 * 1024) return { ok: false, error: '头文件过大' };
+      return { ok: true, path: full, name: path.basename(full), content: fs.readFileSync(full, 'utf8') };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
   ipcMain.handle('project:list', () => {
     if (!settings.projectDir) return { ok: false, error: '未选择工程目录' };
     return projectFs.listProject(settings.projectDir);

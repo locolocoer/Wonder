@@ -81,6 +81,8 @@ export function EditorPane({
               renderWhitespace: 'none',
               smoothScrolling: true,
               readOnly: Boolean(active.readOnly),
+              quickSuggestions: true,
+              suggestOnTriggerCharacters: true,
             }}
           />
         ) : (

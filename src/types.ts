@@ -194,6 +194,7 @@ declare global {
       openExternal(url: string): Promise<{ ok: boolean }>;
       revealPath(rel: string): Promise<{ ok: boolean }>;
       readReference(): Promise<{ ok: boolean; content?: string; error?: string }>;
+      openHeader(payload: { kind: 'sys' | 'local'; name: string; basePath?: string }): Promise<{ ok: boolean; path?: string; name?: string; content?: string; error?: string }>;
       onEvent(channel: string, cb: (data: any) => void): () => void;
     };
   }
