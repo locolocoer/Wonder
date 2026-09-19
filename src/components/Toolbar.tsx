@@ -94,7 +94,7 @@ export function Toolbar({
             : `🛠 ${toolchain.cc.name} 可用`
           : '⚠ 未检测到 C 编译器'}
       </span>
-      <button className="btn primary" onClick={onRunBuild} disabled={buildRunning || !projectDir}>
+      <button className="btn primary" onClick={() => onRunBuild()} disabled={buildRunning || !projectDir}>
         {buildRunning ? '运行中…' : '▶ 编译并测试'}
       </button>
       <button className="btn" onClick={onOpenSettings}>

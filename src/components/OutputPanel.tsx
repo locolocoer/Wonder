@@ -55,10 +55,10 @@ export function OutputPanel({
                 ⚠ 未检测到 C 编译器
               </span>
             )}
-            <button className="btn" onClick={onRunBuild} disabled={buildRunning || !toolchain.available}>
+            <button className="btn" onClick={() => onRunBuild()} disabled={buildRunning || !toolchain.available}>
               {buildRunning ? '运行中…' : '▶ 编译并测试'}
             </button>
-            <button className="btn" onClick={onRunAllBuild} disabled={buildRunning || !toolchain.available} title="运行所有阶段的测试用例">
+            <button className="btn" onClick={() => onRunAllBuild()} disabled={buildRunning || !toolchain.available} title="运行所有阶段的测试用例">
               {buildRunning ? '运行中…' : '🧪 全量回归'}
             </button>
             <button className="btn" onClick={onRevealProject} title="在资源管理器中打开工程目录">

@@ -456,20 +456,22 @@ export default function App() {
     }
   };
 
-  const runBuild = async (scope: 'stage' | 'all' = 'stage') => {
+  const runBuild = async (scope?: 'stage' | 'all') => {
     if (!settings || !settings.projectDir) return;
     await saveAll();
     const stage = findStage(currentStageId);
     if (!stage) return;
-    setBuildScope(scope);
+    // 防止 onClick 直接把事件对象当参数传进来：只有显式传 'all' 才是全量，其余一律视为本阶段。
+    const effectiveScope = scope === 'all' ? 'all' : 'stage';
+    setBuildScope(effectiveScope);
     setBuildRunning(true);
     setLogs([]);
     setBuildResult(null);
     try {
-      const testCases = scope === 'all' ? CURRICULUM.flatMap((s) => s.testCases) : stage.testCases;
+      const testCases = effectiveScope === 'all' ? CURRICULUM.flatMap((s) => s.testCases) : stage.testCases;
       const res = await window.api.buildRun({ testCases, ccPath: settings.toolchain.ccPath });
       setBuildResult(res);
-      if (res.ok && res.failCount === 0 && res.total > 0 && scope === 'stage') {
+      if (res.ok && res.failCount === 0 && res.total > 0 && effectiveScope === 'stage') {
         recordStagePass(currentStageId);
       }
     } finally {
