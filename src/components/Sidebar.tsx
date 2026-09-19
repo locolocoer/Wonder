@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import type { Stage, ProjectFile } from '../types';
 import { FileTree } from './FileTree';
+import { GitPanel } from './GitPanel';
 
 export function Sidebar({
   style,
+  projectDir,
   stages,
   currentStageId,
   completedIds,
@@ -17,6 +19,7 @@ export function Sidebar({
   onRefreshFiles,
 }: {
   style?: React.CSSProperties;
+  projectDir: string;
   stages: Stage[];
   currentStageId: string;
   completedIds: Set<string>;
@@ -29,7 +32,7 @@ export function Sidebar({
   onDeleteFile: (path: string) => void;
   onRefreshFiles: () => void;
 }) {
-  const [tab, setTab] = useState<'course' | 'files'>('course');
+  const [tab, setTab] = useState<'course' | 'files' | 'git'>('course');
 
   return (
     <aside className="sidebar" style={style}>
@@ -39,6 +42,9 @@ export function Sidebar({
         </button>
         <button className={`sidebar-tab ${tab === 'files' ? 'active' : ''}`} onClick={() => setTab('files')}>
           文件
+        </button>
+        <button className={`sidebar-tab ${tab === 'git' ? 'active' : ''}`} onClick={() => setTab('git')}>
+          版本
         </button>
       </div>
       {tab === 'course' ? (
@@ -85,7 +91,7 @@ export function Sidebar({
             );
           })}
         </div>
-      ) : (
+      ) : tab === 'files' ? (
         <FileTree
           files={files}
           activePath={activePath}
@@ -94,6 +100,8 @@ export function Sidebar({
           onDelete={onDeleteFile}
           onRefresh={onRefreshFiles}
         />
+      ) : (
+        <GitPanel projectDir={projectDir} />
       )}
     </aside>
   );

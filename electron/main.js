@@ -13,6 +13,7 @@ const ai = require('./ai');
 const shellRunner = require('./shell');
 const term = require('./term');
 const updater = require('./updater');
+const git = require('./git');
 
 const SCHEME = 'app';
 let mainWindow = null;
@@ -136,6 +137,13 @@ function registerIpc() {
       return { ok: true };
     }
   });
+
+  ipcMain.handle('git:is-repo', () => (settings.projectDir ? git.isRepo(settings.projectDir) : { ok: true, isRepo: false }));
+  ipcMain.handle('git:init', () => (settings.projectDir ? git.init(settings.projectDir) : { ok: false, error: '请先选择工程目录' }));
+  ipcMain.handle('git:status', () => (settings.projectDir ? git.status(settings.projectDir) : { ok: false, error: '请先选择工程目录', files: [] }));
+  ipcMain.handle('git:log', (_e, n) => (settings.projectDir ? git.log(settings.projectDir, n || 50) : { ok: false, error: '请先选择工程目录', commits: [] }));
+  ipcMain.handle('git:commit', (_e, message) => (settings.projectDir ? git.commit(settings.projectDir, String(message || '')) : { ok: false, error: '请先选择工程目录' }));
+  ipcMain.handle('git:rollback', (_e, hash) => (settings.projectDir ? git.rollback(settings.projectDir, String(hash || '')) : { ok: false, error: '请先选择工程目录' }));
 
   ipcMain.handle('app:get-boot', () => {
     return {

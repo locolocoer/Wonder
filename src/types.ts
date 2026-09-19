@@ -119,6 +119,18 @@ export interface UpdateStatus {
   message?: string;
 }
 
+export interface GitFile {
+  code: string;
+  path: string;
+  kind: 'modified' | 'added' | 'deleted' | 'untracked';
+}
+
+export interface GitCommit {
+  hash: string;
+  subject: string;
+  date: string;
+}
+
 export interface FileTab {
   path: string;
   name: string;
@@ -150,6 +162,12 @@ declare global {
       chatLoad(): Promise<ChatMessage[]>;
       chatSave(messages: ChatMessage[]): Promise<{ ok: boolean; error?: string }>;
       chatClear(): Promise<{ ok: boolean }>;
+      gitIsRepo(): Promise<{ ok: boolean; isRepo: boolean; notFound?: boolean }>;
+      gitInit(): Promise<{ ok: boolean; error?: string; output?: string }>;
+      gitStatus(): Promise<{ ok: boolean; error?: string; files: GitFile[] }>;
+      gitLog(n?: number): Promise<{ ok: boolean; error?: string; commits: GitCommit[] }>;
+      gitCommit(message: string): Promise<{ ok: boolean; error?: string; output?: string }>;
+      gitRollback(hash: string): Promise<{ ok: boolean; error?: string; output?: string }>;
       winMinimize(): Promise<{ ok: boolean }>;
       winToggleMaximize(): Promise<{ ok: boolean }>;
       winClose(): Promise<{ ok: boolean }>;

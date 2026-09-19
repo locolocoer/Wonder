@@ -29,6 +29,13 @@ contextBridge.exposeInMainWorld('api', {
   chatSave: (messages) => ipcRenderer.invoke('chat:save', messages),
   chatClear: () => ipcRenderer.invoke('chat:clear'),
 
+  gitIsRepo: () => ipcRenderer.invoke('git:is-repo'),
+  gitInit: () => ipcRenderer.invoke('git:init'),
+  gitStatus: () => ipcRenderer.invoke('git:status'),
+  gitLog: (n) => ipcRenderer.invoke('git:log', n),
+  gitCommit: (message) => ipcRenderer.invoke('git:commit', message),
+  gitRollback: (hash) => ipcRenderer.invoke('git:rollback', hash),
+
   winMinimize: () => ipcRenderer.invoke('win:minimize'),
   winToggleMaximize: () => ipcRenderer.invoke('win:toggle-maximize'),
   winClose: () => ipcRenderer.invoke('win:close'),

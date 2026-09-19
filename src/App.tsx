@@ -386,6 +386,7 @@ export default function App() {
       <div className="main">
         <Sidebar
           style={{ width: sidebarWidth }}
+          projectDir={settings.projectDir}
           stages={CURRICULUM}
           currentStageId={currentStageId}
           completedIds={completedIds}
