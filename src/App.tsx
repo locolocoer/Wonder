@@ -553,7 +553,7 @@ export default function App() {
       history.unshift({ role: m.role, content: c });
       budget -= c.length;
     }
-    const msgs = buildMessages(mode, stage, ctx, buildResult, text, history);
+    const msgs = buildMessages(mode, stage, ctx, buildResult, settings.language, text, history);
 
     const baseId = `ai-${Date.now()}`;
     const userLabel = text && text.trim() ? text.trim() : MODE_LABELS[mode];
