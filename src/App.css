@@ -991,6 +991,22 @@ body.resizing .center {
   padding: 3px 8px;
 }
 
+.create-row input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  padding: 4px 6px;
+  color: var(--fg);
+  background: var(--bg-input, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  outline: none;
+}
+
+.create-row input:focus {
+  border-color: var(--accent);
+}
+
 .file-list {
   flex: 1 1 auto;
   overflow-y: auto;

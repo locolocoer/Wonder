@@ -145,6 +145,31 @@ function registerIpc() {
   ipcMain.handle('git:commit', (_e, message) => (settings.projectDir ? git.commit(settings.projectDir, String(message || '')) : { ok: false, error: '请先选择工程目录' }));
   ipcMain.handle('git:rollback', (_e, hash) => (settings.projectDir ? git.rollback(settings.projectDir, String(hash || '')) : { ok: false, error: '请先选择工程目录' }));
 
+  ipcMain.handle('dialog:confirm', async (_e, opts = {}) => {
+    const res = await dialog.showMessageBox(mainWindow, {
+      type: opts.type || 'question',
+      title: opts.title || '确认',
+      message: String(opts.message || ''),
+      buttons: opts.buttons || ['取消', '确定'],
+      defaultId: opts.defaultId ?? 1,
+      cancelId: opts.cancelId ?? 0,
+      noLink: true,
+    });
+    return res.response === (opts.defaultId ?? 1);
+  });
+
+  ipcMain.handle('dialog:message', async (_e, opts = {}) => {
+    await dialog.showMessageBox(mainWindow, {
+      type: opts.type || 'info',
+      title: opts.title || '提示',
+      message: String(opts.message || ''),
+      buttons: opts.buttons || ['确定'],
+      defaultId: 0,
+      noLink: true,
+    });
+    return { ok: true };
+  });
+
   ipcMain.handle('app:get-boot', () => {
     return {
       version: app.getVersion(),

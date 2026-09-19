@@ -63,7 +63,7 @@ export function GitPanel({ projectDir }: { projectDir: string }) {
   };
 
   const doRollback = async (hash: string) => {
-    if (!window.confirm(`回滚到 ${hash}？\n\n这将丢弃当前未提交的改动，以及该版本之后的所有提交。`)) return;
+    if (!(await window.api.dialogConfirm({ message: `回滚到 ${hash}？\n\n这将丢弃当前未提交的改动，以及该版本之后的所有提交。` }))) return;
     setBusy(true);
     const r = await window.api.gitRollback(hash);
     setBusy(false);

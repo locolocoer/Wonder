@@ -170,6 +170,8 @@ declare global {
       gitLog(n?: number): Promise<{ ok: boolean; error?: string; commits: GitCommit[] }>;
       gitCommit(message: string): Promise<{ ok: boolean; error?: string; output?: string }>;
       gitRollback(hash: string): Promise<{ ok: boolean; error?: string; output?: string }>;
+      dialogConfirm(opts: { message: string; title?: string; type?: string; buttons?: string[]; defaultId?: number; cancelId?: number }): Promise<boolean>;
+      dialogMessage(opts: { message: string; title?: string; type?: string; buttons?: string[] }): Promise<{ ok: boolean }>;
       winMinimize(): Promise<{ ok: boolean }>;
       winToggleMaximize(): Promise<{ ok: boolean }>;
       winClose(): Promise<{ ok: boolean }>;

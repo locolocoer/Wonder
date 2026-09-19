@@ -193,9 +193,9 @@ export default function App() {
   }, [tabs, activePath]);
 
   const closeTab = useCallback(
-    (path: string) => {
+    async (path: string) => {
       const t = tabs.find((x) => x.path === path);
-      if (t && t.dirty && !window.confirm(`文件 ${path} 有未保存的修改，确定关闭？`)) return;
+      if (t && t.dirty && !(await window.api.dialogConfirm({ message: `文件 ${path} 有未保存的修改，确定关闭？` }))) return;
       const remaining = tabs.filter((x) => x.path !== path);
       setTabs(remaining);
       if (activePath === path) {
@@ -222,7 +222,7 @@ export default function App() {
     }
     const r = await window.api.initStarter();
     if (!r.ok) {
-      window.alert(r.error || '初始化失败');
+      await window.api.dialogMessage({ type: 'error', message: r.error || '初始化失败' });
       return;
     }
     await loadFiles();
@@ -233,7 +233,7 @@ export default function App() {
   const createFile = async (path: string, kind: 'file' | 'dir') => {
     const r = await window.api.projectCreate(path, kind);
     if (!r.ok) {
-      window.alert(r.error);
+      await window.api.dialogMessage({ type: 'error', message: r.error || '操作失败' });
       return;
     }
     await loadFiles();
@@ -243,7 +243,7 @@ export default function App() {
   const deleteFile = async (path: string) => {
     const r = await window.api.projectDelete(path);
     if (!r.ok) {
-      window.alert(r.error);
+      await window.api.dialogMessage({ type: 'error', message: r.error || '操作失败' });
       return;
     }
     setTabs((prev) => prev.filter((t) => t.path !== path && !t.path.startsWith(path + '/')));

@@ -39,6 +39,9 @@ contextBridge.exposeInMainWorld('api', {
   gitCommit: (message) => ipcRenderer.invoke('git:commit', message),
   gitRollback: (hash) => ipcRenderer.invoke('git:rollback', hash),
 
+  dialogConfirm: (opts) => ipcRenderer.invoke('dialog:confirm', opts),
+  dialogMessage: (opts) => ipcRenderer.invoke('dialog:message', opts),
+
   winMinimize: () => ipcRenderer.invoke('win:minimize'),
   winToggleMaximize: () => ipcRenderer.invoke('win:toggle-maximize'),
   winClose: () => ipcRenderer.invoke('win:close'),

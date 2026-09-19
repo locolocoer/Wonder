@@ -42,8 +42,8 @@ export function ChatPanel({
         {messages.length > 0 && (
           <button
             className="btn"
-            onClick={() => {
-              if (window.confirm('清空与导师的全部对话历史？')) onClearChat();
+            onClick={async () => {
+              if (await window.api.dialogConfirm({ message: '清空与导师的全部对话历史？' })) onClearChat();
             }}
           >
             清空对话

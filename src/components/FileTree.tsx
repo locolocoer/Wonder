@@ -47,6 +47,7 @@ export function FileTree({
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['src', 'tests', 'reference']));
   const [creating, setCreating] = useState<false | 'file' | 'dir'>(false);
+  const [newName, setNewName] = useState('');
   const tree = useMemo(() => buildTree(files), [files]);
 
   const toggle = (p: string) => {
@@ -58,11 +59,17 @@ export function FileTree({
     });
   };
 
-  const handleCreate = () => {
-    const name = window.prompt('输入名称（如 lexer.c 或 tests/）', creating === 'dir' ? 'newdir' : 'newfile.c');
+  const confirmCreate = () => {
+    const name = newName.trim();
     if (!name) return;
     onCreate(name, creating === 'dir' ? 'dir' : 'file');
     setCreating(false);
+    setNewName('');
+  };
+
+  const cancelCreate = () => {
+    setCreating(false);
+    setNewName('');
   };
 
   const renderNode = (node: TreeNode, depth: number): React.ReactNode => {
@@ -89,8 +96,8 @@ export function FileTree({
             <span
               className="file-del"
               title="删除"
-              onClick={() => {
-                if (window.confirm(`删除 ${node.path}？`)) onDelete(node.path);
+              onClick={async () => {
+                if (await window.api.dialogConfirm({ message: `删除 ${node.path}？` })) onDelete(node.path);
               }}
             >
               ✕
@@ -117,11 +124,21 @@ export function FileTree({
       </div>
       {creating && (
         <div className="create-row">
-          <span>新建{creating === 'file' ? '文件' : '目录'}:</span>
-          <button className="btn" onClick={handleCreate}>
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder={creating === 'file' ? '文件名，如 lexer.c' : '目录名，如 tests'}
+            autoFocus
+            spellCheck={false}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') confirmCreate();
+              else if (e.key === 'Escape') cancelCreate();
+            }}
+          />
+          <button className="btn" onClick={confirmCreate}>
             确认
           </button>
-          <button className="btn" onClick={() => setCreating(false)}>
+          <button className="btn" onClick={cancelCreate}>
             取消
           </button>
         </div>
