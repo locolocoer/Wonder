@@ -72,7 +72,7 @@ export function EditorPane({
             language={langFor(active.name)}
             theme={theme}
             value={active.content}
-            onChange={(v) => onChange(v || '')}
+            onChange={active.readOnly ? undefined : (v) => onChange(v || '')}
             onMount={(editor, monaco) => {
               editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onSaveRef.current());
             }}
