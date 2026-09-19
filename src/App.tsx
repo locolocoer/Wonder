@@ -163,10 +163,10 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [tabs]);
 
-  const clearChat = () => {
+  const clearChat = useCallback(() => {
     setMessages([]);
     window.api.chatClear();
-  };
+  }, []);
 
   // ---- IPC events ---------------------------------------------------------
   useEffect(() => {
@@ -514,7 +514,7 @@ export default function App() {
   }, [runBuild, activePath, closeTab, tabs]);
 
   // ---- AI -----------------------------------------------------------------
-  const collectProjectContext = async (): Promise<ProjectContext> => {
+  const collectProjectContext = useCallback(async (): Promise<ProjectContext> => {
     const tree = files.map((f) => f.path).sort();
     const contents: Record<string, string> = {};
     const includeContent = (f: ProjectFile) => {
@@ -528,9 +528,9 @@ export default function App() {
       if (r.ok && r.content != null && r.content.length < 200000) contents[f.path] = r.content;
     }
     return { tree, contents };
-  };
+  }, [files]);
 
-  const sendChat = async (mode: AiMode, text?: string) => {
+  const sendChat = useCallback(async (mode: AiMode, text?: string) => {
     if (!settings) return;
     if (!settings.apiKey) {
       setShowSettings(true);
@@ -589,11 +589,13 @@ export default function App() {
       setStreaming(false);
       requestIdRef.current = null;
     }
-  };
+  }, [settings, currentStageId, buildResult, messages, saveAll, collectProjectContext]);
 
-  const abortChat = () => {
+  const abortChat = useCallback(() => {
     if (requestIdRef.current) window.api.aiAbort(requestIdRef.current);
-  };
+  }, []);
+
+  const openSettings = useCallback(() => setShowSettings(true), []);
 
   // ---- settings -----------------------------------------------------------
   const saveSettings = async (patch: Partial<Settings>) => {
@@ -684,7 +686,7 @@ export default function App() {
           hasApiKey={Boolean(settings.apiKey)}
           onSend={sendChat}
           onAbort={abortChat}
-          onOpenSettings={() => setShowSettings(true)}
+          onOpenSettings={openSettings}
           onClearChat={clearChat}
         />
       </div>

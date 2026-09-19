@@ -3,7 +3,7 @@ import type { ChatMessage } from '../types';
 import { MODE_LABELS, type AiMode } from '../lib/ai-prompts';
 import { Markdown } from './Markdown';
 
-export function ChatPanel({
+export const ChatPanel = React.memo(function ChatPanel({
   style,
   messages,
   streaming,
@@ -118,4 +118,4 @@ export function ChatPanel({
       </div>
     </div>
   );
-}
+});
