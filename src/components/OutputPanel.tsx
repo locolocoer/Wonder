@@ -11,6 +11,8 @@ export function OutputPanel({
   onRunBuild,
   onRevealProject,
   initialCwd,
+  currentStageDone,
+  onMarkStageDone,
 }: {
   style?: React.CSSProperties;
   buildResult: BuildResult | null;
@@ -20,6 +22,8 @@ export function OutputPanel({
   onRunBuild: () => void;
   onRevealProject: () => void;
   initialCwd: string;
+  currentStageDone: boolean;
+  onMarkStageDone: () => void;
 }) {
   const [tab, setTab] = useState<'tests' | 'terminal'>('tests');
 
@@ -73,6 +77,18 @@ export function OutputPanel({
         )}
         {buildResult && buildResult.ok && buildResult.results.length === 0 && (
           <div className="log-line info">当前阶段没有自动化测试用例，可参考左侧「验收标准」手动验证。</div>
+        )}
+        {buildResult && buildResult.ok && buildResult.total > 0 && buildResult.failCount === 0 && (
+          <div className="stage-pass-banner">
+            <span>🎉 本阶段测试全部通过（{buildResult.passCount}/{buildResult.total}）</span>
+            {currentStageDone ? (
+              <span className="badge ok">本阶段已完成</span>
+            ) : (
+              <button className="btn primary" onClick={onMarkStageDone}>
+                标记阶段完成
+              </button>
+            )}
+          </div>
         )}
         {buildResult &&
           buildResult.ok &&

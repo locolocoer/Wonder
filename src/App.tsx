@@ -32,6 +32,7 @@ export default function App() {
   const [logs, setLogs] = useState<BuildLogEntry[]>([]);
   const [buildRunning, setBuildRunning] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [version, setVersion] = useState('');
 
   // 面板尺寸（可拖拽调节，并持久化）
   const [chatWidth, setChatWidth] = useState<number>(() => {
@@ -93,6 +94,7 @@ export default function App() {
       const b: BootInfo = await window.api.getBoot();
       setSettings(b.settings);
       setToolchain(b.toolchain);
+      setVersion(b.version);
       const sid = localStorage.getItem('cc-stage') || 'stage1';
       let done: string[] = [];
       try {
@@ -282,6 +284,26 @@ export default function App() {
     }
   };
 
+  // ---- 全局快捷键（Ctrl+B 编译测试 / Ctrl+, 设置） -------------------------
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+        if (e.key === 'b') {
+          e.preventDefault();
+          runBuild();
+        } else if (e.key === ',') {
+          e.preventDefault();
+          setShowSettings(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runBuild]);
+
   // ---- AI -----------------------------------------------------------------
   const collectProjectContext = async (): Promise<ProjectContext> => {
     const tree = files.map((f) => f.path).sort();
@@ -420,6 +442,8 @@ export default function App() {
             onRunBuild={runBuild}
             onRevealProject={() => window.api.revealPath('.')}
             initialCwd={settings.projectDir}
+            currentStageDone={completedIds.has(currentStageId)}
+            onMarkStageDone={() => toggleDone(currentStageId)}
           />
         </div>
         <div className="divider-v" onMouseDown={startDrag('chat')} title="拖动调整宽度" />
@@ -438,6 +462,7 @@ export default function App() {
         <SettingsModal
           settings={settings}
           toolchain={toolchain}
+          version={version}
           onClose={() => setShowSettings(false)}
           onSave={saveSettings}
           onDetect={detectToolchain}

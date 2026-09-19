@@ -4,12 +4,14 @@ import type { Settings, ToolchainInfo, UpdateStatus } from '../types';
 export function SettingsModal({
   settings,
   toolchain,
+  version,
   onClose,
   onSave,
   onDetect,
 }: {
   settings: Settings;
   toolchain: ToolchainInfo;
+  version: string;
   onClose: () => void;
   onSave: (patch: Partial<Settings>) => void;
   onDetect: () => void;
@@ -139,6 +141,30 @@ export function SettingsModal({
             )}
           </div>
           {updateLabel() && <div className="hint">{updateLabel()}</div>}
+        </div>
+
+        <div className="field about">
+          <label>关于</label>
+          <div className="about-brand">
+            <span className="about-name">Wonder</span>
+            {version && <span className="about-version">v{version}</span>}
+          </div>
+          <div className="hint">
+            Wonder —— AI 陪练式项目编程训练器。名字取「好奇（wonder）、问道、惊叹」三重含义：带着好奇出发、一路问道、亲手做出让自己惊叹的作品。
+          </div>
+          <div className="hint">
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                window.api.openExternal('https://github.com/locolocoer/Wonder');
+              }}
+            >
+              GitHub 仓库
+            </a>
+            {' · '}
+            <span>快捷键：Ctrl+B 编译测试 · Ctrl+, 设置 · Ctrl+S 保存</span>
+          </div>
         </div>
 
         <div className="modal-actions">
