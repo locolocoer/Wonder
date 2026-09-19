@@ -8,6 +8,7 @@ import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
 import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
 import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
 import App from './App';
+import { registerCDocs } from './lib/c-docs';
 import './App.css';
 
 // Route Monaco's web workers to local bundles (no CDN, works offline in Electron).
@@ -22,6 +23,9 @@ import './App.css';
 };
 
 loader.config({ monaco });
+
+// 注册 C 标准库的悬浮说明与 Ctrl+点击跳转文档。
+registerCDocs();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
