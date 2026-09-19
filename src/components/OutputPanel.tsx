@@ -82,28 +82,53 @@ export function OutputPanel({
                 <span>{r.pass ? '✅' : '❌'}</span>
                 <span>[{r.mode}]</span>
                 <span>{r.name}</span>
-                {r.note && <span style={{ color: 'var(--fg-dim)', fontSize: 12 }}>{r.note}</span>}
+                {r.description && <span className="test-desc">{r.description}</span>}
+                {r.note && <span className="test-note">{r.note}</span>}
               </div>
-              {!r.pass && (r.mode === 'tokens' || r.mode === 'ast' || r.mode === 'stdout') && (
-                <div className="test-body">
-                  <div className="diff-col">
-                    <h5>期望输出</h5>
-                    <pre>{r.expected}</pre>
+              <div className="test-body">
+                {r.steps && r.steps.length > 0 && (
+                  <div className="test-steps">
+                    {r.steps.map((s, i) => (
+                      <div key={i} className={`test-step ${s.status}`}>
+                        <span className="step-icon">{s.status === 'ok' ? '✓' : s.status === 'fail' ? '✗' : '·'}</span>
+                        <span className="step-name">{s.name}</span>
+                        {s.detail && <span className="step-detail">{s.detail}</span>}
+                      </div>
+                    ))}
                   </div>
-                  <div className="diff-col">
-                    <h5>实际输出</h5>
-                    <pre>{r.actual || '(空)'}</pre>
-                  </div>
-                </div>
-              )}
-              {!r.pass && r.mode === 'run' && (
-                <div className="test-body">
+                )}
+                {r.source && (
+                  <details className="test-source">
+                    <summary>测试源码（输入的 C 程序）</summary>
+                    <pre>{r.source}</pre>
+                  </details>
+                )}
+                {r.mode === 'run' ? (
                   <div className="diff-col" style={{ gridColumn: '1 / -1' }}>
                     <h5>运行结果</h5>
-                    <pre>{r.actual || r.note || '(无输出)'}</pre>
+                    <pre>
+                      期望退出码 {r.expectedExit ?? 0}，实际 {r.actualExit ?? '?'}
+                      {r.actual ? `\n${r.actual}` : ''}
+                    </pre>
                   </div>
-                </div>
-              )}
+                ) : r.mode === 'error' ? (
+                  <div className="diff-col" style={{ gridColumn: '1 / -1' }}>
+                    <h5>编译器输出（应报错退出）</h5>
+                    <pre>{r.actual || '(空)'}</pre>
+                  </div>
+                ) : (
+                  <>
+                    <div className="diff-col">
+                      <h5>期望输出</h5>
+                      <pre>{r.expected || '(空)'}</pre>
+                    </div>
+                    <div className="diff-col">
+                      <h5>实际输出</h5>
+                      <pre>{r.actual || '(空)'}</pre>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           ))}
         {buildResult && !buildResult.ok && buildResult.error && (

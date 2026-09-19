@@ -133,13 +133,29 @@ async function runBuild(payload, emit) {
     log('info', `— 测试 [${tc.mode}] ${tc.name}`, tc.id);
     const srcFile = path.join(workDir, `${tc.id}.c`);
     fs.writeFileSync(srcFile, tc.source || '', 'utf8');
-    let result = { id: tc.id, name: tc.name, mode: tc.mode, pass: false, expected: tc.expected ?? '', actual: '', diffLine: -1, note: '' };
+    const steps = [];
+    const result = {
+      id: tc.id,
+      name: tc.name,
+      mode: tc.mode,
+      pass: false,
+      expected: tc.expected ?? '',
+      actual: '',
+      diffLine: -1,
+      note: '',
+      description: tc.description || '',
+      source: tc.source || '',
+      expectedExit: tc.expectedExit,
+      actualExit: undefined,
+      steps,
+    };
 
     if (tc.mode === 'run') {
       // Compile C -> asm, assemble+link -> exe, run -> compare exit code.
       const asmFile = path.join(workDir, `${tc.id}.s`);
       const exeFile = path.join(workDir, exeName(tc.id));
       const c2s = await runCmd(compilerBin, [srcFile], { cwd: workDir });
+      steps.push({ name: '用你的编译器生成汇编', status: c2s.code === 0 ? 'ok' : 'fail', detail: `mycc ${tc.id}.c → ${tc.id}.s` });
       if (c2s.code !== 0) {
         result.note = `你的编译器处理该程序失败（退出码 ${c2s.code}）`;
         result.actual = (c2s.stderr || c2s.stdout || '').slice(0, 2000);
@@ -147,19 +163,27 @@ async function runBuild(payload, emit) {
       } else {
         fs.writeFileSync(asmFile, c2s.stdout, 'utf8');
         const link = await runCmd(cc, [asmFile, '-o', exeFile], { cwd: workDir });
+        steps.push({ name: 'gcc 汇编 + 链接', status: link.code === 0 ? 'ok' : 'fail', detail: `gcc ${tc.id}.s -o ${tc.id}.exe` });
         if (link.code !== 0) {
           result.note = '生成的汇编无法汇编/链接：' + (link.stderr || '').slice(0, 1500);
           result.actual = c2s.stdout.slice(0, 2000);
         } else {
           const run = await runCmd(exeFile, [], { cwd: workDir });
+          result.actualExit = run.code;
           if (run.timedOut) {
+            steps.push({ name: '运行程序', status: 'fail', detail: '运行超时（可能死循环）' });
             result.note = '程序运行超时（可能死循环）。';
-          } else if (run.code !== (tc.expectedExit ?? 0)) {
-            result.note = `期望退出码 ${tc.expectedExit ?? 0}，实际 ${run.code}`;
-            result.actual = `exit=${run.code}\n${run.stdout}`;
           } else {
-            result.pass = true;
-            result.actual = `exit=${run.code}` + (run.stdout ? `\nstdout:\n${run.stdout}` : '');
+            steps.push({ name: '运行程序', status: 'ok', detail: `退出码 ${run.code}` });
+            const exp = tc.expectedExit ?? 0;
+            steps.push({ name: '对比退出码', status: run.code === exp ? 'ok' : 'fail', detail: `期望 ${exp}，实际 ${run.code}` });
+            if (run.code !== exp) {
+              result.note = `期望退出码 ${exp}，实际 ${run.code}`;
+              result.actual = `exit=${run.code}` + (run.stdout ? `\nstdout:\n${run.stdout}` : '');
+            } else {
+              result.pass = true;
+              result.actual = `exit=${run.code}` + (run.stdout ? `\nstdout:\n${run.stdout}` : '');
+            }
           }
         }
       }
@@ -169,21 +193,25 @@ async function runBuild(payload, emit) {
       const run = await runCmd(compilerBin, [...flags, srcFile], { cwd: workDir });
       const combined = `${run.stdout}\n${run.stderr}`;
       result.actual = combined.slice(0, 2000);
+      result.actualExit = run.code;
+      steps.push({ name: '用你的编译器处理（期望报错退出）', status: run.code !== 0 ? 'ok' : 'fail', detail: `退出码 ${run.code}` });
+      const needle = (tc.expected || '').trim();
+      const hasNeedle = !needle || combined.includes(needle);
+      steps.push({ name: '检查报错信息', status: hasNeedle ? 'ok' : 'fail', detail: needle ? `报错信息含关键词 "${needle}"` : '仅要求非零退出码' });
       if (run.code === 0) {
         result.note = '期望编译器报错退出（非零退出码），但它正常退出了。';
+      } else if (!hasNeedle) {
+        result.note = `报错信息中未找到期望的关键词 "${needle}"。`;
       } else {
-        const needle = (tc.expected || '').trim();
-        if (needle && !combined.includes(needle)) {
-          result.note = `报错信息中未找到期望的关键词 "${needle}"。`;
-        } else {
-          result.pass = true;
-          result.note = `正确报错退出（退出码 ${run.code}）。`;
-        }
+        result.pass = true;
+        result.note = `正确报错退出（退出码 ${run.code}）。`;
       }
     } else {
       // tokens / ast / stdout: compare the compiler's stdout against expected.
       const flags = tc.mode === 'tokens' ? ['-t'] : tc.mode === 'ast' ? ['-a'] : (tc.flags || '').split(/\s+/).filter(Boolean);
       const run = await runCmd(compilerBin, [...flags, srcFile], { cwd: workDir });
+      result.actualExit = run.code;
+      steps.push({ name: '运行编译器', status: run.code === 0 ? 'ok' : 'fail', detail: `mycc ${flags.join(' ')} ${tc.id}.c` });
       if (run.code !== 0) {
         result.note = `编译器退出码 ${run.code}：${(run.stderr || run.stdout || '').slice(0, 1500)}`;
         result.actual = run.stdout;
@@ -192,7 +220,9 @@ async function runBuild(payload, emit) {
         const expectedNorm = tc.mode === 'ast' ? stripWs(tc.expected) : normalize(tc.expected ?? '');
         const actualNorm = tc.mode === 'ast' ? stripWs(run.stdout) : normalize(run.stdout);
         result.actual = run.stdout;
-        if (expectedNorm === actualNorm) {
+        const matches = expectedNorm === actualNorm;
+        steps.push({ name: '对比输出', status: matches ? 'ok' : 'fail', detail: matches ? '输出一致' : '输出不一致' });
+        if (matches) {
           result.pass = true;
         } else {
           result.diffLine = firstDiffLine(normalize(tc.expected ?? ''), normalize(run.stdout));

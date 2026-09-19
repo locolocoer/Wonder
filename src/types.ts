@@ -73,6 +73,12 @@ export interface ChatMessage {
   streaming?: boolean;
 }
 
+export interface TestStep {
+  name: string;
+  status: 'ok' | 'fail' | 'skip' | 'info';
+  detail?: string;
+}
+
 export interface TestResult {
   id: string;
   name: string;
@@ -82,6 +88,11 @@ export interface TestResult {
   actual: string;
   diffLine: number;
   note: string;
+  description?: string;
+  source?: string;
+  expectedExit?: number;
+  actualExit?: number;
+  steps?: TestStep[];
 }
 
 export interface BuildResult {
