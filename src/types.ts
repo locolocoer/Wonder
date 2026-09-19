@@ -178,7 +178,7 @@ declare global {
       gitStatus(): Promise<{ ok: boolean; error?: string; files: GitFile[] }>;
       gitLog(n?: number): Promise<{ ok: boolean; error?: string; commits: GitCommit[] }>;
       gitCommit(message: string): Promise<{ ok: boolean; error?: string; output?: string }>;
-      gitRollback(hash: string): Promise<{ ok: boolean; error?: string; output?: string }>;
+      gitRollback(hash: string): Promise<{ ok: boolean; error?: string; output?: string; stashed?: boolean }>;
       gitDiff(rel: string | null): Promise<{ ok: boolean; diff?: string; error?: string }>;
       gitUncommit(): Promise<{ ok: boolean; error?: string; output?: string }>;
       dialogConfirm(opts: { message: string; title?: string; type?: string; buttons?: string[]; defaultId?: number; cancelId?: number }): Promise<boolean>;

@@ -69,9 +69,15 @@ async function commit(projectDir, message) {
 }
 
 async function rollback(projectDir, hash) {
+  // 回滚会丢弃未提交改动，先 stash 备份，避免误操作丢代码（可用 git stash pop 找回）
+  const stash = await runGit(projectDir, ['stash', 'push', '-u', '-m', 'wonder: rollback backup']);
+  const stashed = stash.code === 0;
   const r = await runGit(projectDir, ['reset', '--hard', hash]);
-  if (r.code !== 0) return { ok: false, error: r.stderr || r.stdout };
-  return { ok: true, output: r.stdout };
+  if (r.code !== 0) {
+    if (stashed) await runGit(projectDir, ['stash', 'pop']); // 回滚失败，弹回暂存
+    return { ok: false, error: r.stderr || r.stdout };
+  }
+  return { ok: true, output: r.stdout, stashed };
 }
 
 async function diff(projectDir, rel) {

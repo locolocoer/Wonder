@@ -79,11 +79,17 @@ export function GitPanel({
   };
 
   const doRollback = async (hash: string) => {
-    if (!(await window.api.dialogConfirm({ message: `回滚到 ${hash}？\n\n这将丢弃当前未提交的改动，以及该版本之后的所有提交。` }))) return;
+    if (!(await window.api.dialogConfirm({ message: `回滚到 ${hash}？\n\n当前未提交的改动会先自动暂存（git stash），可用「git stash pop」找回。` }))) return;
     setBusy(true);
     const r = await window.api.gitRollback(hash);
     setBusy(false);
-    setTip(r.ok ? `已回滚到 ${hash}` : `回滚失败：${r.error}`);
+    setTip(
+      r.ok
+        ? r.stashed
+          ? `已回滚到 ${hash}。未提交的改动已暂存，可在终端执行 git stash pop 找回。`
+          : `已回滚到 ${hash}`
+        : `回滚失败：${r.error}`
+    );
     setDiffPath(null);
     setDiffText('');
     if (r.ok) await onProjectChanged();

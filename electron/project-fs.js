@@ -2,7 +2,21 @@
 const fs = require('fs');
 const path = require('path');
 
-const EXCLUDED_DIRS = new Set(['.git', 'node_modules', '.trainer-tests', 'build', 'release', '.vscode']);
+const EXCLUDED_DIRS = new Set(['.git', 'node_modules', '.trainer-tests', 'build', 'release', '.vscode', '.wonder-backup']);
+
+// 写文件前自动备份：保留上一次内容，防止误覆盖后无法找回。
+const BACKUP_DIR = '.wonder-backup';
+function backupBeforeWrite(projectDir, target) {
+  try {
+    if (!fs.existsSync(target)) return;
+    const backupDir = path.join(path.resolve(projectDir), BACKUP_DIR);
+    fs.mkdirSync(backupDir, { recursive: true });
+    const rel = path.relative(path.resolve(projectDir), target).split(path.sep).join('__');
+    fs.copyFileSync(target, path.join(backupDir, rel + '.bak'));
+  } catch {
+    /* 备份失败不影响写入 */
+  }
+}
 
 function isInside(root, target) {
   const rel = path.relative(root, target);
@@ -63,6 +77,7 @@ function readProjectFile(projectDir, rel) {
 
 function writeProjectFile(projectDir, rel, content) {
   const target = resolveSafe(projectDir, rel);
+  backupBeforeWrite(projectDir, target);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, content, 'utf8');
   return { ok: true };
