@@ -1,8 +1,11 @@
 'use strict';
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, clipboard } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
   getBoot: () => ipcRenderer.invoke('app:get-boot'),
+
+  clipboardWriteText: (text) => clipboard.writeText(String(text ?? '')),
+  clipboardReadText: () => clipboard.readText(),
 
   settingsGet: () => ipcRenderer.invoke('settings:get'),
   settingsSet: (patch) => ipcRenderer.invoke('settings:set', patch),

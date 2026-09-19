@@ -64,12 +64,36 @@ function createTermSession({ cwd, gccBin, send }) {
     }
     currentChild = child;
 
-    const chunks = [];
-    child.stdout.on('data', (d) => chunks.push(d));
-    child.stderr.on('data', (d) => chunks.push(d));
+    // 分块累积 + 50ms 防抖流式回传：既接近实时，又保证 UTF-8/GBK 多字节序列完整解码。
+    let buf = Buffer.alloc(0);
+    let timer = null;
+    const flush = () => {
+      if (!buf.length) return;
+      reply(decodeOutput(buf));
+      buf = Buffer.alloc(0);
+    };
+    const schedule = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        flush();
+      }, 50);
+    };
+    child.stdout.on('data', (d) => {
+      buf = Buffer.concat([buf, d]);
+      schedule();
+    });
+    child.stderr.on('data', (d) => {
+      buf = Buffer.concat([buf, d]);
+      schedule();
+    });
     child.on('error', (e) => reply(`\r\n${e.message}\r\n`));
     child.on('close', (code) => {
-      if (chunks.length) reply(decodeOutput(Buffer.concat(chunks)));
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      flush();
       currentChild = null;
       finish(code === null ? -1 : code);
     });

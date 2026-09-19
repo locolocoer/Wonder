@@ -142,6 +142,8 @@ declare global {
   interface Window {
     api: {
       getBoot(): Promise<BootInfo>;
+      clipboardWriteText(text: string): void;
+      clipboardReadText(): string;
       settingsGet(): Promise<Settings>;
       settingsSet(patch: Partial<Settings>): Promise<Settings>;
       detectToolchain(): Promise<ToolchainInfo>;

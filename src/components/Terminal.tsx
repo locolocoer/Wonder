@@ -4,13 +4,15 @@ import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 
 // 基于 xterm.js 的终端（VS Code 同款渲染），后端为 cmd 命令会话。
+// 支持：Ctrl+C 复制（选中时）/ 中断、Ctrl+Shift+C/V 复制粘贴、Ctrl+V 粘贴、↑↓ 历史命令、Ctrl+L 清屏。
 export function Terminal({ initialCwd }: { initialCwd: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
-  const fitRef = useRef<FitAddon | null>(null);
   const cwdRef = useRef(initialCwd || 'C:\\');
   const lineRef = useRef('');
   const busyRef = useRef(false);
+  const historyRef = useRef<string[]>([]);
+  const histIdxRef = useRef(-1);
 
   useEffect(() => {
     const host = hostRef.current!;
@@ -32,12 +34,72 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
     term.open(host);
     fit.fit();
     termRef.current = term;
-    fitRef.current = fit;
 
     const prompt = () => `${cwdRef.current}>`;
+    const redrawLine = () => term.write('\r\x1b[K' + prompt() + lineRef.current);
 
-    term.writeln('\x1b[90mWonder 终端 — 输入命令后回车执行；Ctrl+C 中断；Ctrl+L 清屏。\x1b[0m');
+    const historyUp = () => {
+      if (historyRef.current.length === 0) return;
+      if (histIdxRef.current === -1) histIdxRef.current = historyRef.current.length - 1;
+      else if (histIdxRef.current > 0) histIdxRef.current--;
+      lineRef.current = historyRef.current[histIdxRef.current];
+      redrawLine();
+    };
+    const historyDown = () => {
+      if (histIdxRef.current === -1) return;
+      if (histIdxRef.current < historyRef.current.length - 1) {
+        histIdxRef.current++;
+        lineRef.current = historyRef.current[histIdxRef.current];
+      } else {
+        histIdxRef.current = -1;
+        lineRef.current = '';
+      }
+      redrawLine();
+    };
+
+    term.writeln('\x1b[90mWonder 终端 — 回车执行；Ctrl+C 中断；Ctrl+L 清屏；选中文字后 Ctrl+C 复制；↑↓ 历史命令。\x1b[0m');
     term.write(prompt());
+
+    // 键盘钩子：处理复制/粘贴/历史，优先级高于 xterm 默认行为
+    term.attachCustomKeyEventHandler((e) => {
+      if (e.type !== 'keydown') return true;
+      const key = e.key.toLowerCase();
+
+      if (e.ctrlKey && e.shiftKey && key === 'c') {
+        const sel = term.getSelection();
+        if (sel) window.api.clipboardWriteText(sel);
+        return false;
+      }
+      if (e.ctrlKey && e.shiftKey && key === 'v') {
+        const t = window.api.clipboardReadText();
+        if (t) term.paste(t);
+        return false;
+      }
+      if (e.ctrlKey && !e.shiftKey && key === 'c') {
+        const sel = term.getSelection();
+        if (sel) {
+          window.api.clipboardWriteText(sel);
+          return false; // 有选中 → 复制
+        }
+        return true; // 无选中 → 交给 ^C（中断）
+      }
+      if (e.ctrlKey && !e.shiftKey && key === 'v') {
+        const t = window.api.clipboardReadText();
+        if (t) term.paste(t);
+        return false;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        historyUp();
+        return false;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        historyDown();
+        return false;
+      }
+      return true;
+    });
 
     const offData = window.api.onEvent('term:data', (text: string) => term.write(text));
     const offExit = window.api.onEvent('term:exit', (info: { code: number; cwd: string }) => {
@@ -60,6 +122,8 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
           term.write('\r\n');
           lineRef.current = '';
           if (line.trim()) {
+            historyRef.current.push(line);
+            histIdxRef.current = -1;
             busyRef.current = true;
             window.api.termRun(line);
           } else {
@@ -100,7 +164,6 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
       ro.disconnect();
       term.dispose();
       termRef.current = null;
-      fitRef.current = null;
     };
   }, []);
 
