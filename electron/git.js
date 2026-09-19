@@ -74,4 +74,18 @@ async function rollback(projectDir, hash) {
   return { ok: true, output: r.stdout };
 }
 
-module.exports = { runGit, isRepo, init, status, log, commit, rollback };
+async function diff(projectDir, rel) {
+  const args = ['diff', '--no-color'];
+  if (rel) args.push('--', rel);
+  const r = await runGit(projectDir, args);
+  // git diff 对无差异返回 code 0 且输出为空；code 非 0 通常表示有差异（git 用 1 表示存在差异）
+  return { ok: true, diff: r.stdout, notFound: r.notFound };
+}
+
+async function uncommit(projectDir) {
+  const r = await runGit(projectDir, ['reset', '--soft', 'HEAD~1']);
+  if (r.code !== 0) return { ok: false, error: r.stderr || r.stdout };
+  return { ok: true, output: r.stdout };
+}
+
+module.exports = { runGit, isRepo, init, status, log, commit, rollback, diff, uncommit };

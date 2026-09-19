@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('api', {
   projectWrite: (rel, content) => ipcRenderer.invoke('project:write', rel, content),
   projectCreate: (rel, kind) => ipcRenderer.invoke('project:create', rel, kind),
   projectDelete: (rel) => ipcRenderer.invoke('project:delete', rel),
+  projectRename: (rel, newName) => ipcRenderer.invoke('project:rename', rel, newName),
 
   buildRun: (payload) => ipcRenderer.invoke('build:run', payload),
   shellRun: (cmd) => ipcRenderer.invoke('shell:run', cmd),
@@ -38,14 +39,18 @@ contextBridge.exposeInMainWorld('api', {
   gitLog: (n) => ipcRenderer.invoke('git:log', n),
   gitCommit: (message) => ipcRenderer.invoke('git:commit', message),
   gitRollback: (hash) => ipcRenderer.invoke('git:rollback', hash),
+  gitDiff: (rel) => ipcRenderer.invoke('git:diff', rel),
+  gitUncommit: () => ipcRenderer.invoke('git:uncommit'),
 
   dialogConfirm: (opts) => ipcRenderer.invoke('dialog:confirm', opts),
   dialogMessage: (opts) => ipcRenderer.invoke('dialog:message', opts),
+  dialogChoice: (opts) => ipcRenderer.invoke('dialog:choice', opts),
 
   winMinimize: () => ipcRenderer.invoke('win:minimize'),
   winToggleMaximize: () => ipcRenderer.invoke('win:toggle-maximize'),
   winClose: () => ipcRenderer.invoke('win:close'),
   winIsMaximized: () => ipcRenderer.invoke('win:is-maximized'),
+  closeNow: () => ipcRenderer.invoke('app:close-now'),
 
   aiChat: (payload) => ipcRenderer.invoke('ai:chat', payload),
   aiAbort: (id) => ipcRenderer.invoke('ai:abort', id),

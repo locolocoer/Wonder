@@ -21,6 +21,20 @@ export function EditorPane({
 }) {
   const active = tabs.find((t) => t.path === activePath);
 
+  const langFor = (name: string): string => {
+    const n = name.toLowerCase();
+    if (/\.(c|h)$/.test(n)) return 'c';
+    if (/\.(md|markdown)$/.test(n)) return 'markdown';
+    if (/\.json$/.test(n)) return 'json';
+    if (/\.(bat|cmd)$/.test(n)) return 'bat';
+    if (/\.(sh|bash)$/.test(n)) return 'shell';
+    if (/\.(js|jsx)$/.test(n)) return 'javascript';
+    if (/\.(ts|tsx)$/.test(n)) return 'typescript';
+    if (/\.(html|htm)$/.test(n)) return 'html';
+    if (/\.css$/.test(n)) return 'css';
+    return 'plaintext';
+  };
+
   return (
     <div className="editor-area">
       <div className="tabs">
@@ -45,7 +59,7 @@ export function EditorPane({
         {active ? (
           <Editor
             height="100%"
-            language={active.name.endsWith('.c') || active.name.endsWith('.h') ? 'c' : active.name.endsWith('.md') ? 'markdown' : 'plaintext'}
+            language={langFor(active.name)}
             theme={theme}
             value={active.content}
             onChange={(v) => onChange(v || '')}

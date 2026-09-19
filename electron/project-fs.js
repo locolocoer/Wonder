@@ -87,11 +87,25 @@ function deleteProjectEntry(projectDir, rel) {
   return { ok: true };
 }
 
+function renameProjectEntry(projectDir, rel, newName) {
+  const target = resolveSafe(projectDir, rel);
+  if (target === path.resolve(projectDir)) return { ok: false, error: '不能重命名工程根目录' };
+  const base = newName.replace(/[/\\]/g, '').trim();
+  if (!base) return { ok: false, error: '名称不能为空' };
+  if (base === '.' || base === '..') return { ok: false, error: '非法名称' };
+  const dest = path.join(path.dirname(target), base);
+  if (dest === target) return { ok: true };
+  if (fs.existsSync(dest)) return { ok: false, error: '目标名称已存在' };
+  fs.renameSync(target, dest);
+  return { ok: true };
+}
+
 module.exports = {
   listProject,
   readProjectFile,
   writeProjectFile,
   createProjectEntry,
   deleteProjectEntry,
+  renameProjectEntry,
   resolveSafe,
 };

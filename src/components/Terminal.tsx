@@ -5,6 +5,23 @@ import '@xterm/xterm/css/xterm.css';
 
 // 基于 xterm.js 的终端（VS Code 同款渲染），后端为 cmd 命令会话。
 // 支持：Ctrl+C 复制（选中时）/ 中断、Ctrl+Shift+C/V 复制粘贴、Ctrl+V 粘贴、↑↓ 历史命令、Ctrl+L 清屏。
+const HIST_KEY = 'term-history';
+function loadHistory(): string[] {
+  try {
+    const arr = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+function saveHistory(h: string[]) {
+  try {
+    localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(-100)));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function Terminal({ initialCwd }: { initialCwd: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
@@ -16,6 +33,7 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
 
   useEffect(() => {
     const host = hostRef.current!;
+    historyRef.current = loadHistory();
     const term = new XTerm({
       cursorBlink: true,
       fontFamily: '"Cascadia Code", Consolas, "Courier New", monospace',
@@ -123,6 +141,7 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
           lineRef.current = '';
           if (line.trim()) {
             historyRef.current.push(line);
+            saveHistory(historyRef.current);
             histIdxRef.current = -1;
             busyRef.current = true;
             window.api.termRun(line);

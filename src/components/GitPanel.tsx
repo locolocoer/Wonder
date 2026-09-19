@@ -8,7 +8,20 @@ const KIND_LABEL: Record<GitFile['kind'], string> = {
   untracked: '未跟踪',
 };
 
-export function GitPanel({ projectDir }: { projectDir: string }) {
+function identityHint(err: string): string | null {
+  if (/user\.name|user\.email|tell me who you are|identity/i.test(err)) {
+    return '提交前需要配置 git 身份。可在终端执行：\ngit config --global user.name "你的名字"\ngit config --global user.email "you@example.com"';
+  }
+  return null;
+}
+
+export function GitPanel({
+  projectDir,
+  onProjectChanged,
+}: {
+  projectDir: string;
+  onProjectChanged: () => void;
+}) {
   const [isRepo, setIsRepo] = useState(false);
   const [gitMissing, setGitMissing] = useState(false);
   const [files, setFiles] = useState<GitFile[]>([]);
@@ -16,6 +29,8 @@ export function GitPanel({ projectDir }: { projectDir: string }) {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [tip, setTip] = useState('');
+  const [diffPath, setDiffPath] = useState<string | null>(null);
+  const [diffText, setDiffText] = useState('');
 
   const refresh = useCallback(async () => {
     if (!projectDir) return;
@@ -57,7 +72,8 @@ export function GitPanel({ projectDir }: { projectDir: string }) {
       setMsg('');
       setTip('提交成功 ✓');
     } else {
-      setTip(`提交失败：${r.error || '未知错误'}`);
+      const hint = identityHint(r.error || '');
+      setTip(`提交失败：${r.error || '未知错误'}${hint ? '\n\n' + hint : ''}`);
     }
     refresh();
   };
@@ -68,7 +84,30 @@ export function GitPanel({ projectDir }: { projectDir: string }) {
     const r = await window.api.gitRollback(hash);
     setBusy(false);
     setTip(r.ok ? `已回滚到 ${hash}` : `回滚失败：${r.error}`);
+    setDiffPath(null);
+    setDiffText('');
+    if (r.ok) await onProjectChanged();
     refresh();
+  };
+
+  const doUncommit = async () => {
+    if (!(await window.api.dialogConfirm({ message: '撤销最近一次提交？\n\n改动会回到「未提交」状态，但不会丢失。' }))) return;
+    setBusy(true);
+    const r = await window.api.gitUncommit();
+    setBusy(false);
+    setTip(r.ok ? '已撤销最近一次提交（soft reset）' : `撤销失败：${r.error}`);
+    refresh();
+  };
+
+  const viewDiff = async (path: string) => {
+    if (diffPath === path) {
+      setDiffPath(null);
+      setDiffText('');
+      return;
+    }
+    const r = await window.api.gitDiff(path);
+    setDiffPath(path);
+    setDiffText(r.ok && r.diff ? r.diff : '(无差异)');
   };
 
   if (gitMissing) {
@@ -114,11 +153,24 @@ export function GitPanel({ projectDir }: { projectDir: string }) {
           {files.map((f) => (
             <div key={f.path} className={`git-file ${f.kind}`} title={f.path}>
               <span className="git-file-kind">{KIND_LABEL[f.kind]}</span>
-              <span className="git-file-path">{f.path}</span>
+              <span className="git-file-path" onClick={() => viewDiff(f.path)} title="点击查看差异">
+                {f.path}
+              </span>
             </div>
           ))}
           {!files.length && <div className="log-line info">没有变更。</div>}
         </div>
+        {diffPath && (
+          <div className="git-diff">
+            <div className="git-diff-head">
+              <span>差异：{diffPath}</span>
+              <button className="btn" onClick={() => viewDiff(diffPath)}>
+                关闭
+              </button>
+            </div>
+            <pre>{diffText}</pre>
+          </div>
+        )}
         <div className="git-commit-row">
           <input
             value={msg}
@@ -138,9 +190,16 @@ export function GitPanel({ projectDir }: { projectDir: string }) {
       <div className="git-section">
         <div className="git-section-title">
           <span>提交历史</span>
-          <button className="btn" onClick={refresh}>
-            ⟳ 刷新
-          </button>
+          <span className="git-history-actions">
+            {commits.length > 0 && (
+              <button className="btn" onClick={doUncommit} disabled={busy} title="撤销最近一次提交（soft reset，改动保留）">
+                撤销上次提交
+              </button>
+            )}
+            <button className="btn" onClick={refresh}>
+              ⟳ 刷新
+            </button>
+          </span>
         </div>
         <div className="git-commits">
           {commits.map((c, i) => (
@@ -161,7 +220,7 @@ export function GitPanel({ projectDir }: { projectDir: string }) {
         </div>
       </div>
 
-      {tip && <div className="log-line info">{tip}</div>}
+      {tip && <div className="log-line info" style={{ whiteSpace: 'pre-wrap' }}>{tip}</div>}
     </div>
   );
 }

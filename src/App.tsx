@@ -31,8 +31,12 @@ export default function App() {
   const [buildResult, setBuildResult] = useState<BuildResult | null>(null);
   const [logs, setLogs] = useState<BuildLogEntry[]>([]);
   const [buildRunning, setBuildRunning] = useState(false);
+  const [buildScope, setBuildScope] = useState<'stage' | 'all'>('stage');
   const [showSettings, setShowSettings] = useState(false);
   const [version, setVersion] = useState('');
+  const [starterAvailable, setStarterAvailable] = useState(true);
+  const [sidebarTab, setSidebarTab] = useState<'course' | 'files' | 'git'>('course');
+  const [createPending, setCreatePending] = useState(false);
 
   // 面板尺寸（可拖拽调节，并持久化）
   const [chatWidth, setChatWidth] = useState<number>(() => {
@@ -95,6 +99,7 @@ export default function App() {
       setSettings(b.settings);
       setToolchain(b.toolchain);
       setVersion(b.version);
+      setStarterAvailable(b.starterAvailable);
       const sid = localStorage.getItem('cc-stage') || 'stage1';
       let done: string[] = [];
       try {
@@ -114,6 +119,11 @@ export default function App() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 主题作用于整个应用外壳（不只是 Monaco 编辑器）
+  useEffect(() => {
+    if (settings) document.documentElement.dataset.theme = settings.theme === 'vs' ? 'light' : 'dark';
+  }, [settings?.theme, settings]);
 
   // ---- chat 历史持久化（防抖保存，重启后恢复） --------------------------
   useEffect(() => {
@@ -179,16 +189,27 @@ export default function App() {
   );
 
   const saveAll = useCallback(async () => {
+    let failed = 0;
     for (const t of tabs) {
-      if (t.dirty) await window.api.projectWrite(t.path, t.content);
+      if (!t.dirty) continue;
+      const r = await window.api.projectWrite(t.path, t.content);
+      if (!r.ok) failed++;
     }
-    setTabs((prev) => prev.map((t) => ({ ...t, dirty: false })));
+    if (failed > 0) {
+      await window.api.dialogMessage({ type: 'error', message: `${failed} 个文件保存失败，请检查文件是否被占用或路径是否有效。` });
+    } else {
+      setTabs((prev) => prev.map((t) => ({ ...t, dirty: false })));
+    }
   }, [tabs]);
 
   const saveActive = useCallback(async () => {
     const t = tabs.find((x) => x.path === activePath);
     if (!t) return;
-    await window.api.projectWrite(t.path, t.content);
+    const r = await window.api.projectWrite(t.path, t.content);
+    if (!r.ok) {
+      await window.api.dialogMessage({ type: 'error', message: `保存失败：${r.error || '未知错误'}` });
+      return;
+    }
     setTabs((prev) => prev.map((x) => (x.path === activePath ? { ...x, dirty: false } : x)));
   }, [tabs, activePath]);
 
@@ -205,7 +226,47 @@ export default function App() {
     [tabs, activePath]
   );
 
+  // ---- 关窗前检查未保存修改（主进程拦截 close 后发来请求） -----------------
+  const requestClose = useCallback(async () => {
+    const dirtyTabs = tabs.filter((t) => t.dirty);
+    if (!dirtyTabs.length) {
+      window.api.closeNow();
+      return;
+    }
+    const names = dirtyTabs.slice(0, 5).map((t) => t.path).join('\n');
+    const res = await window.api.dialogChoice({
+      type: 'warning',
+      title: '有未保存的修改',
+      message: `${dirtyTabs.length} 个文件尚未保存`,
+      detail: names + (dirtyTabs.length > 5 ? '\n…' : ''),
+      buttons: ['保存并关闭', '不保存关闭', '取消'],
+      defaultId: 0,
+      cancelId: 2,
+    });
+    if (res.response === 0) {
+      await saveAll();
+      window.api.closeNow();
+    } else if (res.response === 1) {
+      window.api.closeNow();
+    }
+  }, [tabs, saveAll]);
+
+  useEffect(() => {
+    const off = window.api.onEvent('app:close-requested', () => {
+      requestClose();
+    });
+    return off;
+  }, [requestClose]);
+
   const chooseProject = async () => {
+    if (tabs.some((t) => t.dirty)) {
+      const ok = await window.api.dialogConfirm({
+        message: '有未保存的修改，更换工程目录将丢失这些修改。确定继续吗？',
+        title: '更换工程目录',
+        type: 'warning',
+      });
+      if (!ok) return;
+    }
     const res = await window.api.chooseProject();
     if (res.canceled || !res.projectDir) return;
     setSettings((s) => (s ? { ...s, projectDir: res.projectDir! } : s));
@@ -251,13 +312,53 @@ export default function App() {
     await loadFiles();
   };
 
+  // 磁盘内容被外部改动（Git 回滚、重命名等）后：刷新文件树，并重读所有已打开标签。
+  const onProjectChanged = useCallback(async () => {
+    await loadFiles();
+    const next: FileTab[] = [];
+    for (const t of tabs) {
+      const r = await window.api.projectRead(t.path);
+      if (r.ok) next.push({ ...t, content: r.content || '', dirty: false });
+    }
+    setTabs(next);
+    if (activePath && !next.some((t) => t.path === activePath)) {
+      setActivePath(next.length ? next[next.length - 1].path : '');
+    }
+  }, [tabs, loadFiles, activePath]);
+
+  const renameFile = async (path: string, newName: string) => {
+    await saveAll();
+    const r = await window.api.projectRename(path, newName);
+    if (!r.ok) {
+      await window.api.dialogMessage({ type: 'error', message: r.error || '重命名失败' });
+      return;
+    }
+    await onProjectChanged();
+  };
+
   // ---- stage progress -----------------------------------------------------
   const selectStage = (id: string) => {
     setCurrentStageId(id);
     localStorage.setItem('cc-stage', id);
   };
 
-  const toggleDone = (id: string) => {
+  const stagePassed = (id: string) => {
+    try {
+      const map = JSON.parse(localStorage.getItem('cc-passed') || '{}');
+      return Boolean(map[id]);
+    } catch {
+      return false;
+    }
+  };
+
+  const toggleDone = async (id: string) => {
+    if (!completedIds.has(id) && !stagePassed(id)) {
+      const ok = await window.api.dialogConfirm({
+        message: '该阶段测试尚未全部通过，仍要标记为完成吗？',
+        title: '标记阶段完成',
+      });
+      if (!ok) return;
+    }
     setCompletedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -268,41 +369,72 @@ export default function App() {
   };
 
   // ---- build / test -------------------------------------------------------
-  const runBuild = async () => {
+  const recordStagePass = (id: string) => {
+    try {
+      const map = JSON.parse(localStorage.getItem('cc-passed') || '{}');
+      map[id] = true;
+      localStorage.setItem('cc-passed', JSON.stringify(map));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const runBuild = async (scope: 'stage' | 'all' = 'stage') => {
     if (!settings || !settings.projectDir) return;
     await saveAll();
     const stage = findStage(currentStageId);
     if (!stage) return;
+    setBuildScope(scope);
     setBuildRunning(true);
     setLogs([]);
     setBuildResult(null);
     try {
-      const res = await window.api.buildRun({ testCases: stage.testCases, ccPath: settings.toolchain.ccPath });
+      const testCases = scope === 'all' ? CURRICULUM.flatMap((s) => s.testCases) : stage.testCases;
+      const res = await window.api.buildRun({ testCases, ccPath: settings.toolchain.ccPath });
       setBuildResult(res);
+      if (res.ok && res.failCount === 0 && res.total > 0 && scope === 'stage') {
+        recordStagePass(currentStageId);
+      }
     } finally {
       setBuildRunning(false);
     }
   };
 
-  // ---- 全局快捷键（Ctrl+B 编译测试 / Ctrl+, 设置） -------------------------
+  const runAllBuild = () => runBuild('all');
+
+  // ---- 全局快捷键（Ctrl+B 编译 / Ctrl+, 设置 / Ctrl+W 关标签 / Ctrl+Tab 切换 / Ctrl+N 新建文件）----
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-      if (e.ctrlKey && !e.shiftKey && !e.altKey) {
-        if (e.key === 'b') {
-          e.preventDefault();
-          runBuild();
-        } else if (e.key === ',') {
-          e.preventDefault();
-          setShowSettings(true);
+      if (!e.ctrlKey || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (!e.shiftKey && key === 'b') {
+        e.preventDefault();
+        runBuild();
+      } else if (!e.shiftKey && key === ',') {
+        e.preventDefault();
+        setShowSettings(true);
+      } else if (!e.shiftKey && key === 'w') {
+        e.preventDefault();
+        if (activePath) closeTab(activePath);
+      } else if (!e.shiftKey && key === 'n') {
+        e.preventDefault();
+        setSidebarTab('files');
+        setCreatePending(true);
+      } else if (key === 'tab') {
+        e.preventDefault();
+        const idx = tabs.findIndex((x) => x.path === activePath);
+        if (tabs.length) {
+          const next = e.shiftKey ? (idx - 1 + tabs.length) % tabs.length : (idx + 1) % tabs.length;
+          setActivePath(tabs[next].path);
         }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runBuild]);
+  }, [runBuild, activePath, closeTab, tabs]);
 
   // ---- AI -----------------------------------------------------------------
   const collectProjectContext = async (): Promise<ProjectContext> => {
@@ -330,7 +462,18 @@ export default function App() {
     await saveAll();
     const stage = findStage(currentStageId);
     const ctx = await collectProjectContext();
-    const msgs = buildMessages(mode, stage, ctx, buildResult, text);
+    // 携带最近几轮对话历史，让 AI 有上下文记忆（限制总长度，避免超出上下文）。
+    let budget = 30000;
+    const history: { role: 'user' | 'assistant'; content: string }[] = [];
+    for (let i = messages.length - 1; i >= 0 && budget > 0; i--) {
+      const m = messages[i];
+      if (m.streaming || !m.content || !m.content.trim()) continue;
+      if (m.content.includes('[错误]') || m.content.includes('[已停止]')) continue;
+      const c = m.content.slice(0, Math.min(budget, 4000));
+      history.unshift({ role: m.role, content: c });
+      budget -= c.length;
+    }
+    const msgs = buildMessages(mode, stage, ctx, buildResult, text, history);
 
     const baseId = `ai-${Date.now()}`;
     const userLabel = text && text.trim() ? text.trim() : MODE_LABELS[mode];
@@ -400,6 +543,7 @@ export default function App() {
         projectDir={settings.projectDir}
         toolchain={toolchain}
         buildRunning={buildRunning}
+        starterAvailable={starterAvailable}
         onChooseProject={chooseProject}
         onInitStarter={initStarter}
         onOpenSettings={() => setShowSettings(true)}
@@ -414,12 +558,18 @@ export default function App() {
           completedIds={completedIds}
           files={files}
           activePath={activePath}
+          tab={sidebarTab}
+          onTabChange={setSidebarTab}
+          createPending={createPending}
+          onCreateConsumed={() => setCreatePending(false)}
           onSelectStage={selectStage}
           onToggleDone={toggleDone}
           onOpenFile={openFile}
           onCreateFile={createFile}
           onDeleteFile={deleteFile}
+          onRenameFile={renameFile}
           onRefreshFiles={loadFiles}
+          onProjectChanged={onProjectChanged}
         />
         <div className="divider-v" onMouseDown={startDrag('sidebar')} title="拖动调整宽度" />
         <div className="center">
@@ -439,7 +589,9 @@ export default function App() {
             logs={logs}
             buildRunning={buildRunning}
             toolchain={toolchain}
+            buildScope={buildScope}
             onRunBuild={runBuild}
+            onRunAllBuild={runAllBuild}
             onRevealProject={() => window.api.revealPath('.')}
             initialCwd={settings.projectDir}
             currentStageDone={completedIds.has(currentStageId)}

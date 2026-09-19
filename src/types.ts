@@ -50,6 +50,8 @@ export interface TestCase {
   expectedExit?: number;
   flags?: string;
   description?: string;
+  /** 若为 true，则调用编译器时不追加源文件参数（用于 --version/--help 等）。 */
+  noSource?: boolean;
 }
 
 export interface Stage {
@@ -154,6 +156,7 @@ declare global {
       projectWrite(rel: string, content: string): Promise<{ ok: boolean; error?: string }>;
       projectCreate(rel: string, kind: 'file' | 'dir'): Promise<{ ok: boolean; error?: string }>;
       projectDelete(rel: string): Promise<{ ok: boolean; error?: string }>;
+      projectRename(rel: string, newName: string): Promise<{ ok: boolean; error?: string }>;
       buildRun(payload: { testCases: TestCase[]; ccPath?: string }): Promise<BuildResult>;
       shellRun(cmd: string): Promise<{ ok: boolean; code?: number; stdout?: string; stderr?: string; timedOut?: boolean; error?: string }>;
       termRun(cmd: string): Promise<{ ok: boolean }>;
@@ -170,12 +173,16 @@ declare global {
       gitLog(n?: number): Promise<{ ok: boolean; error?: string; commits: GitCommit[] }>;
       gitCommit(message: string): Promise<{ ok: boolean; error?: string; output?: string }>;
       gitRollback(hash: string): Promise<{ ok: boolean; error?: string; output?: string }>;
+      gitDiff(rel: string | null): Promise<{ ok: boolean; diff?: string; error?: string }>;
+      gitUncommit(): Promise<{ ok: boolean; error?: string; output?: string }>;
       dialogConfirm(opts: { message: string; title?: string; type?: string; buttons?: string[]; defaultId?: number; cancelId?: number }): Promise<boolean>;
       dialogMessage(opts: { message: string; title?: string; type?: string; buttons?: string[] }): Promise<{ ok: boolean }>;
+      dialogChoice(opts: { message: string; detail?: string; title?: string; type?: string; buttons?: string[]; defaultId?: number; cancelId?: number }): Promise<{ response: number }>;
       winMinimize(): Promise<{ ok: boolean }>;
       winToggleMaximize(): Promise<{ ok: boolean }>;
       winClose(): Promise<{ ok: boolean }>;
       winIsMaximized(): Promise<boolean>;
+      closeNow(): Promise<{ ok: boolean }>;
       aiChat(payload: { requestId: string; apiKey: string; baseUrl: string; model: string; temperature: number; messages: any[] }): Promise<{ ok: boolean; content?: string; reasoning?: string; error?: string; aborted?: boolean }>;
       aiAbort(id: string): Promise<{ ok: boolean }>;
       openExternal(url: string): Promise<{ ok: boolean }>;

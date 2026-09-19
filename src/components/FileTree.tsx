@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { ProjectFile } from '../types';
 
 interface TreeNode {
@@ -33,22 +33,38 @@ function buildTree(files: ProjectFile[]): TreeNode[] {
 export function FileTree({
   files,
   activePath,
+  createPending,
+  onCreateConsumed,
   onOpen,
   onCreate,
   onDelete,
+  onRename,
   onRefresh,
 }: {
   files: ProjectFile[];
   activePath: string;
+  createPending: boolean;
+  onCreateConsumed: () => void;
   onOpen: (path: string) => void;
   onCreate: (path: string, kind: 'file' | 'dir') => void;
   onDelete: (path: string) => void;
+  onRename: (path: string, newName: string) => void;
   onRefresh: () => void;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['src', 'tests', 'reference']));
   const [creating, setCreating] = useState<false | 'file' | 'dir'>(false);
   const [newName, setNewName] = useState('');
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   const tree = useMemo(() => buildTree(files), [files]);
+
+  // 外部（快捷键 Ctrl+N）请求新建文件时，打开新建输入框
+  useEffect(() => {
+    if (createPending) {
+      setCreating('file');
+      onCreateConsumed();
+    }
+  }, [createPending, onCreateConsumed]);
 
   const toggle = (p: string) => {
     setExpanded((prev) => {
@@ -72,9 +88,23 @@ export function FileTree({
     setNewName('');
   };
 
+  const confirmRename = () => {
+    if (!renaming) return;
+    const name = renameValue.trim();
+    if (name && name !== renaming.split('/').pop()) onRename(renaming, name);
+    setRenaming(null);
+    setRenameValue('');
+  };
+
+  const cancelRename = () => {
+    setRenaming(null);
+    setRenameValue('');
+  };
+
   const renderNode = (node: TreeNode, depth: number): React.ReactNode => {
     const isDir = node.type === 'dir';
     const isOpen = expanded.has(node.path);
+    const isRenaming = renaming === node.path;
     return (
       <React.Fragment key={node.path}>
         <div
@@ -85,24 +115,52 @@ export function FileTree({
           <span className="file-toggle" onClick={() => isDir && toggle(node.path)}>
             {isDir ? (isOpen ? '▾' : '▸') : ''}
           </span>
-          <span
-            className={`file-name ${isDir ? 'dir' : ''} ${activePath === node.path ? 'active' : ''}`}
-            onClick={() => (isDir ? toggle(node.path) : onOpen(node.path))}
-          >
-            {isDir ? '📁 ' : '📄 '}
-            {node.name}
-          </span>
-          {!isDir && (
+          {isRenaming ? (
+            <input
+              className="file-rename-input"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              autoFocus
+              spellCheck={false}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') confirmRename();
+                else if (e.key === 'Escape') cancelRename();
+              }}
+              onBlur={confirmRename}
+            />
+          ) : (
+            <span
+              className={`file-name ${isDir ? 'dir' : ''} ${activePath === node.path ? 'active' : ''}`}
+              onClick={() => (isDir ? toggle(node.path) : onOpen(node.path))}
+            >
+              {isDir ? '📁 ' : '📄 '}
+              {node.name}
+            </span>
+          )}
+          <span className="file-row-actions">
+            <span
+              className="file-op"
+              title="重命名"
+              onClick={() => {
+                setRenaming(node.path);
+                setRenameValue(node.name);
+              }}
+            >
+              ✎
+            </span>
             <span
               className="file-del"
               title="删除"
               onClick={async () => {
-                if (await window.api.dialogConfirm({ message: `删除 ${node.path}？` })) onDelete(node.path);
+                const msg = isDir
+                  ? `删除目录 ${node.path}？\n\n目录下的所有文件都会被删除。`
+                  : `删除 ${node.path}？`;
+                if (await window.api.dialogConfirm({ message: msg })) onDelete(node.path);
               }}
             >
               ✕
             </span>
-          )}
+          </span>
         </div>
         {isDir && isOpen && node.children.map((c) => renderNode(c, depth + 1))}
       </React.Fragment>
@@ -143,6 +201,7 @@ export function FileTree({
           </button>
         </div>
       )}
+      {creating && <div className="create-hint">可输入带路径的名称，如 src/lexer.c（会建到对应子目录）</div>}
       <div className="file-list">{tree.map((n) => renderNode(n, 0))}</div>
     </div>
   );

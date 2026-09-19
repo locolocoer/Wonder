@@ -39,6 +39,7 @@ export function Toolbar({
   projectDir,
   toolchain,
   buildRunning,
+  starterAvailable,
   onChooseProject,
   onInitStarter,
   onOpenSettings,
@@ -47,6 +48,7 @@ export function Toolbar({
   projectDir: string;
   toolchain: ToolchainInfo;
   buildRunning: boolean;
+  starterAvailable: boolean;
   onChooseProject: () => void;
   onInitStarter: () => void;
   onOpenSettings: () => void;
@@ -68,7 +70,12 @@ export function Toolbar({
       <button className="btn" onClick={onChooseProject}>
         {projectDir ? '更换工程' : '选择工程目录'}
       </button>
-      <button className="btn" onClick={onInitStarter} title="把起始模板复制进当前工程">
+      <button
+        className="btn"
+        onClick={onInitStarter}
+        disabled={!starterAvailable}
+        title={starterAvailable ? '把起始模板复制进当前工程' : '起始模板不可用（应用资源缺失）'}
+      >
         初始化起始模板
       </button>
       <span className="project-path" title={projectDir}>

@@ -11,6 +11,8 @@ const { decodeOutput } = require('./decode');
 function createTermSession({ cwd, gccBin, send }) {
   let currentCwd = cwd;
   let currentChild = null;
+  const sessionEnv = {}; // 用户在终端里 set 的环境变量，跨命令持久
+  const dirStack = []; // pushd/popd 目录栈
 
   function reply(text) {
     send('term:data', text);
@@ -18,6 +20,26 @@ function createTermSession({ cwd, gccBin, send }) {
 
   function finish(code) {
     send('term:exit', { code, cwd: currentCwd });
+  }
+
+  function resolveDir(target) {
+    if (!target || target === '~') return process.env.USERPROFILE || currentCwd;
+    // 绝对路径或盘符（如 C:\ 或 D:foo）
+    if (path.isAbsolute(target) || /^[a-zA-Z]:/.test(target)) return target;
+    return path.resolve(currentCwd, target);
+  }
+
+  function tryCd(target) {
+    const resolved = resolveDir(target);
+    try {
+      if (fs.statSync(resolved).isDirectory()) {
+        currentCwd = resolved;
+        return '';
+      }
+      return `\r\n系统找不到指定的路径: ${resolved}\r\n`;
+    } catch {
+      return `\r\n系统找不到指定的路径: ${resolved}\r\n`;
+    }
   }
 
   function run(rawCmd) {
@@ -28,29 +50,71 @@ function createTermSession({ cwd, gccBin, send }) {
       return;
     }
 
-    // cd 本地处理，保持工作目录（跨命令持久）
-    const cdMatch = /^cd(?:\s+(.+))?$/i.exec(cmd);
+    // ---- 本地模拟的命令（跨命令持久化状态）----
+
+    // cd / chdir（支持 cd /d 跨盘、~、相对路径）
+    const cdMatch = /^(?:cd|chdir)(?:\s+(.*))?$/i.exec(cmd);
     if (cdMatch) {
       let target = (cdMatch[1] || '').trim();
-      if (!target || target === '~') {
-        target = process.env.USERPROFILE || process.cwd();
+      if (/^\/d\b/i.test(target)) target = target.replace(/^\/d\s*/i, '').trim();
+      reply(tryCd(target || '~'));
+      finish(0);
+      return;
+    }
+
+    // pushd / popd
+    const pushdMatch = /^pushd(?:\s+(.*))?$/i.exec(cmd);
+    if (pushdMatch) {
+      let target = (pushdMatch[1] || '').trim();
+      if (/^\/d\b/i.test(target)) target = target.replace(/^\/d\s*/i, '').trim();
+      dirStack.push(currentCwd);
+      reply(tryCd(target || '~'));
+      finish(0);
+      return;
+    }
+    if (/^popd\s*$/i.test(cmd)) {
+      if (dirStack.length) {
+        currentCwd = dirStack.pop();
       } else {
-        target = path.isAbsolute(target) ? target : path.resolve(currentCwd, target);
-      }
-      try {
-        if (fs.statSync(target).isDirectory()) {
-          currentCwd = target;
-        } else {
-          reply(`\r\n系统找不到指定的路径: ${target}\r\n`);
-        }
-      } catch {
-        reply(`\r\n系统找不到指定的路径: ${target}\r\n`);
+        reply('\r\n目录栈为空\r\n');
       }
       finish(0);
       return;
     }
 
-    const env = { ...process.env, FORCE_COLOR: '1', TERM: 'xterm-256color', CLICOLOR_FORCE: '1' };
+    // set：持久化环境变量（set VAR=value / set "VAR=value" / set VAR / set）
+    const setMatch = /^set(?:\s+(.*))?$/i.exec(cmd);
+    if (setMatch) {
+      const arg = (setMatch[1] || '').trim();
+      if (!arg) {
+        const all = { ...process.env, ...sessionEnv };
+        const list = Object.keys(all)
+          .sort()
+          .map((k) => `${k}=${all[k]}`)
+          .join('\r\n');
+        reply('\r\n' + list + '\r\n');
+        finish(0);
+        return;
+      }
+      const eq = arg.indexOf('=');
+      if (eq < 0) {
+        const name = arg.replace(/^"|"$/g, '');
+        const val = sessionEnv[name] !== undefined ? sessionEnv[name] : process.env[name];
+        reply(val === undefined || val === null ? '\r\n' : `\r\n${val}\r\n`);
+        finish(0);
+        return;
+      }
+      let name = arg.slice(0, eq).trim().replace(/^"|"$/g, '');
+      let value = arg.slice(eq + 1).replace(/^"|"$/g, '');
+      if (name) {
+        if (value === '') delete sessionEnv[name];
+        else sessionEnv[name] = value;
+      }
+      finish(0);
+      return;
+    }
+
+    const env = { ...process.env, ...sessionEnv, FORCE_COLOR: '1', TERM: 'xterm-256color', CLICOLOR_FORCE: '1' };
     if (gccBin) env.PATH = [gccBin, env.PATH].filter(Boolean).join(path.delimiter);
 
     const shell = process.env.ComSpec || (process.platform === 'win32' ? 'cmd.exe' : '/bin/sh');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { Stage, ProjectFile } from '../types';
 import { FileTree } from './FileTree';
 import { GitPanel } from './GitPanel';
@@ -11,12 +11,18 @@ export function Sidebar({
   completedIds,
   files,
   activePath,
+  tab,
+  onTabChange,
+  createPending,
+  onCreateConsumed,
   onSelectStage,
   onToggleDone,
   onOpenFile,
   onCreateFile,
   onDeleteFile,
+  onRenameFile,
   onRefreshFiles,
+  onProjectChanged,
 }: {
   style?: React.CSSProperties;
   projectDir: string;
@@ -25,25 +31,29 @@ export function Sidebar({
   completedIds: Set<string>;
   files: ProjectFile[];
   activePath: string;
+  tab: 'course' | 'files' | 'git';
+  onTabChange: (tab: 'course' | 'files' | 'git') => void;
+  createPending: boolean;
+  onCreateConsumed: () => void;
   onSelectStage: (id: string) => void;
   onToggleDone: (id: string) => void;
   onOpenFile: (path: string) => void;
   onCreateFile: (path: string, kind: 'file' | 'dir') => void;
   onDeleteFile: (path: string) => void;
+  onRenameFile: (path: string, newName: string) => void;
   onRefreshFiles: () => void;
+  onProjectChanged: () => void;
 }) {
-  const [tab, setTab] = useState<'course' | 'files' | 'git'>('course');
-
   return (
     <aside className="sidebar" style={style}>
       <div className="sidebar-tabs">
-        <button className={`sidebar-tab ${tab === 'course' ? 'active' : ''}`} onClick={() => setTab('course')}>
+        <button className={`sidebar-tab ${tab === 'course' ? 'active' : ''}`} onClick={() => onTabChange('course')}>
           课程路线
         </button>
-        <button className={`sidebar-tab ${tab === 'files' ? 'active' : ''}`} onClick={() => setTab('files')}>
+        <button className={`sidebar-tab ${tab === 'files' ? 'active' : ''}`} onClick={() => onTabChange('files')}>
           文件
         </button>
-        <button className={`sidebar-tab ${tab === 'git' ? 'active' : ''}`} onClick={() => setTab('git')}>
+        <button className={`sidebar-tab ${tab === 'git' ? 'active' : ''}`} onClick={() => onTabChange('git')}>
           版本
         </button>
       </div>
@@ -85,6 +95,16 @@ export function Sidebar({
                         <li key={i}>{a}</li>
                       ))}
                     </ul>
+                    {s.hints && s.hints.length > 0 && (
+                      <>
+                        <h4>提示</h4>
+                        <ul>
+                          {s.hints.map((h, i) => (
+                            <li key={i}>{h}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -95,13 +115,16 @@ export function Sidebar({
         <FileTree
           files={files}
           activePath={activePath}
+          createPending={createPending}
+          onCreateConsumed={onCreateConsumed}
           onOpen={onOpenFile}
           onCreate={onCreateFile}
           onDelete={onDeleteFile}
+          onRename={onRenameFile}
           onRefresh={onRefreshFiles}
         />
       ) : (
-        <GitPanel projectDir={projectDir} />
+        <GitPanel projectDir={projectDir} onProjectChanged={onProjectChanged} />
       )}
     </aside>
   );

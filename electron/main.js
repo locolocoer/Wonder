@@ -20,6 +20,7 @@ let mainWindow = null;
 let settings = null;
 let buildAbort = null;
 let termSession = null;
+let allowClose = false;
 const aiAborts = new Map();
 
 // ---------------------------------------------------------------------------
@@ -46,6 +47,7 @@ function registerScheme(distDir) {
 }
 
 function createWindow() {
+  allowClose = false;
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 920,
@@ -80,6 +82,12 @@ function createWindow() {
   } else {
     mainWindow.loadURL(`${SCHEME}://app/index.html`);
   }
+  mainWindow.on('close', (e) => {
+    if (!allowClose) {
+      e.preventDefault();
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('app:close-requested');
+    }
+  });
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -103,6 +111,11 @@ function registerIpc() {
     return { ok: true };
   });
   ipcMain.handle('win:is-maximized', () => (mainWindow ? mainWindow.isMaximized() : false));
+  ipcMain.handle('app:close-now', () => {
+    allowClose = true;
+    if (mainWindow) mainWindow.close();
+    return { ok: true };
+  });
 
   ipcMain.handle('update:check', () => {
     updater.check();
@@ -144,6 +157,8 @@ function registerIpc() {
   ipcMain.handle('git:log', (_e, n) => (settings.projectDir ? git.log(settings.projectDir, n || 50) : { ok: false, error: '请先选择工程目录', commits: [] }));
   ipcMain.handle('git:commit', (_e, message) => (settings.projectDir ? git.commit(settings.projectDir, String(message || '')) : { ok: false, error: '请先选择工程目录' }));
   ipcMain.handle('git:rollback', (_e, hash) => (settings.projectDir ? git.rollback(settings.projectDir, String(hash || '')) : { ok: false, error: '请先选择工程目录' }));
+  ipcMain.handle('git:diff', (_e, rel) => (settings.projectDir ? git.diff(settings.projectDir, rel || null) : { ok: false, error: '请先选择工程目录' }));
+  ipcMain.handle('git:uncommit', () => (settings.projectDir ? git.uncommit(settings.projectDir) : { ok: false, error: '请先选择工程目录' }));
 
   ipcMain.handle('dialog:confirm', async (_e, opts = {}) => {
     const res = await dialog.showMessageBox(mainWindow, {
@@ -168,6 +183,21 @@ function registerIpc() {
       noLink: true,
     });
     return { ok: true };
+  });
+
+  ipcMain.handle('dialog:choice', async (_e, opts = {}) => {
+    const buttons = Array.isArray(opts.buttons) && opts.buttons.length ? opts.buttons : ['确定'];
+    const res = await dialog.showMessageBox(mainWindow, {
+      type: opts.type || 'question',
+      title: opts.title || '提示',
+      message: String(opts.message || ''),
+      detail: opts.detail ? String(opts.detail) : undefined,
+      buttons,
+      defaultId: opts.defaultId ?? 0,
+      cancelId: opts.cancelId ?? buttons.length - 1,
+      noLink: true,
+    });
+    return { response: res.response };
   });
 
   ipcMain.handle('app:get-boot', () => {
@@ -237,6 +267,13 @@ function registerIpc() {
   ipcMain.handle('project:delete', (_e, rel) => {
     try {
       return projectFs.deleteProjectEntry(settings.projectDir, rel);
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+  ipcMain.handle('project:rename', (_e, rel, newName) => {
+    try {
+      return projectFs.renameProjectEntry(settings.projectDir, rel, String(newName || ''));
     } catch (e) {
       return { ok: false, error: e.message };
     }
@@ -350,6 +387,11 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on('before-quit', () => {
+  // 应用整体退出（含自动更新安装）时放行，避免被未保存提示拦截。
+  allowClose = true;
 });
 
 app.on('window-all-closed', () => {

@@ -11,8 +11,26 @@
   --red: #f14c4c;
   --yellow: #dcdcaa;
   --orange: #ce9178;
+  --btn-hover: #3e3e42;
   --font-mono: 'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Courier New', monospace;
   --font-ui: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+/* 浅色主题：切换应用外壳（Monaco 由编辑器自身主题控制） */
+[data-theme='light'] {
+  --bg: #ffffff;
+  --bg-2: #f3f3f3;
+  --bg-3: #ececec;
+  --bg-4: #e0e0e0;
+  --border: #d4d4d4;
+  --fg: #1f1f1f;
+  --fg-dim: #6b6b6b;
+  --accent: #0b6bcb;
+  --green: #1a7f37;
+  --red: #cf222e;
+  --yellow: #9a6700;
+  --orange: #bc4c00;
+  --btn-hover: #d6d6d6;
 }
 
 * {
@@ -68,7 +86,7 @@ button {
 .toolbar .brand {
   font-weight: 700;
   font-size: 15px;
-  color: #fff;
+  color: var(--fg);
   letter-spacing: 1.5px;
 }
 
@@ -164,7 +182,7 @@ button {
 }
 
 .btn:hover {
-  background: #3e3e42;
+  background: var(--btn-hover);
 }
 
 .btn.primary {
@@ -178,8 +196,9 @@ button {
 }
 
 .btn.danger {
-  background: #5a1d1d;
-  border-color: #8a2b2b;
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
 }
 
 .btn:disabled {
@@ -368,7 +387,7 @@ body.resizing .center {
 .stage-body .contract {
   font-family: var(--font-mono);
   font-size: 11.5px;
-  background: #1e1e1e;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 6px 8px;
@@ -429,7 +448,7 @@ body.resizing .center {
 }
 
 .tab .close:hover {
-  color: #fff;
+  color: var(--fg);
 }
 
 .editor-host {
@@ -563,7 +582,7 @@ body.resizing .center {
 
 .test-card .diff-col pre {
   margin: 0;
-  background: #1e1e1e;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 6px 8px;
@@ -625,7 +644,7 @@ body.resizing .center {
 
 .test-source pre {
   margin: 6px 0 0;
-  background: #1e1e1e;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 6px 8px;
@@ -834,14 +853,14 @@ body.resizing .center {
 
 .markdown code {
   font-family: var(--font-mono);
-  background: #1e1e1e;
+  background: var(--bg);
   padding: 1px 4px;
   border-radius: 3px;
   color: var(--orange);
 }
 
 .markdown pre {
-  background: #1e1e1e;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 5px;
   padding: 8px;
@@ -923,7 +942,7 @@ body.resizing .center {
 }
 
 .markdown tr:nth-child(even) td {
-  background: #242426;
+  background: var(--bg-2);
 }
 
 .markdown input[type='checkbox'] {
@@ -1046,11 +1065,19 @@ body.resizing .center {
 }
 
 .file-name.active {
-  background: #37373d;
+  background: var(--accent);
   color: #fff;
   border-radius: 3px;
 }
 
+.file-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.file-op,
 .file-del {
   color: var(--fg-dim);
   cursor: pointer;
@@ -1059,12 +1086,35 @@ body.resizing .center {
   padding: 0 3px;
 }
 
+.file-row:hover .file-op,
 .file-row:hover .file-del {
   visibility: visible;
 }
 
+.file-op:hover {
+  color: var(--accent);
+}
+
 .file-del:hover {
   color: var(--red);
+}
+
+.file-rename-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  padding: 2px 4px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  outline: none;
+}
+
+.create-hint {
+  padding: 2px 8px 6px;
+  font-size: 11px;
+  color: var(--fg-dim);
 }
 
 /* ---------- Git panel ---------- */
@@ -1135,6 +1185,46 @@ body.resizing .center {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.git-file-path:hover {
+  color: var(--accent);
+}
+
+.git-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.git-diff {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.git-diff-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--bg-3);
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+
+.git-diff pre {
+  margin: 0;
+  padding: 8px;
+  max-height: 240px;
+  overflow: auto;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .git-commit-row {
@@ -1230,7 +1320,7 @@ body.resizing .center {
   font-size: 20px;
   font-weight: 700;
   letter-spacing: 1.5px;
-  color: #fff;
+  color: var(--fg);
 }
 
 .about-version {
@@ -1268,7 +1358,7 @@ body.resizing .center {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #4a4a4a;
+  background: var(--border);
   border-radius: 5px;
 }
 

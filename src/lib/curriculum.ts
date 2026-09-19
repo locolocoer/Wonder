@@ -38,6 +38,7 @@ export const CURRICULUM: Stage[] = [
         flags: '--version',
         source: 'int main() { return 0; }',
         expected: 'mycc 0.1.0',
+        noSource: true,
         description: '运行 mycc --version 应输出固定版本字符串。',
       },
     ],

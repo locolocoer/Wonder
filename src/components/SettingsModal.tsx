@@ -163,7 +163,7 @@ export function SettingsModal({
               GitHub 仓库
             </a>
             {' · '}
-            <span>快捷键：Ctrl+B 编译测试 · Ctrl+, 设置 · Ctrl+S 保存</span>
+            <span>快捷键：Ctrl+B 编译测试 · Ctrl+, 设置 · Ctrl+S 保存 · Ctrl+W 关标签 · Ctrl+Tab 切换 · Ctrl+N 新建文件</span>
           </div>
         </div>
 

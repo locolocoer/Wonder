@@ -8,7 +8,9 @@ export function OutputPanel({
   logs,
   buildRunning,
   toolchain,
+  buildScope,
   onRunBuild,
+  onRunAllBuild,
   onRevealProject,
   initialCwd,
   currentStageDone,
@@ -19,7 +21,9 @@ export function OutputPanel({
   logs: BuildLogEntry[];
   buildRunning: boolean;
   toolchain: ToolchainInfo;
+  buildScope: 'stage' | 'all';
   onRunBuild: () => void;
+  onRunAllBuild: () => void;
   onRevealProject: () => void;
   initialCwd: string;
   currentStageDone: boolean;
@@ -54,6 +58,9 @@ export function OutputPanel({
             <button className="btn" onClick={onRunBuild} disabled={buildRunning || !toolchain.available}>
               {buildRunning ? '运行中…' : '▶ 编译并测试'}
             </button>
+            <button className="btn" onClick={onRunAllBuild} disabled={buildRunning || !toolchain.available} title="运行所有阶段的测试用例">
+              {buildRunning ? '运行中…' : '🧪 全量回归'}
+            </button>
             <button className="btn" onClick={onRevealProject} title="在资源管理器中打开工程目录">
               📂 打开目录
             </button>
@@ -80,14 +87,17 @@ export function OutputPanel({
         )}
         {buildResult && buildResult.ok && buildResult.total > 0 && buildResult.failCount === 0 && (
           <div className="stage-pass-banner">
-            <span>🎉 本阶段测试全部通过（{buildResult.passCount}/{buildResult.total}）</span>
-            {currentStageDone ? (
-              <span className="badge ok">本阶段已完成</span>
-            ) : (
-              <button className="btn primary" onClick={onMarkStageDone}>
-                标记阶段完成
-              </button>
-            )}
+            <span>
+              🎉 {buildScope === 'all' ? '全部' : '本阶段'}测试全部通过（{buildResult.passCount}/{buildResult.total}）
+            </span>
+            {buildScope === 'stage' &&
+              (currentStageDone ? (
+                <span className="badge ok">本阶段已完成</span>
+              ) : (
+                <button className="btn primary" onClick={onMarkStageDone}>
+                  标记阶段完成
+                </button>
+              ))}
           </div>
         )}
         {buildResult &&

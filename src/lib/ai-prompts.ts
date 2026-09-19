@@ -123,17 +123,28 @@ export function buildContext(
   ].join('\n');
 }
 
+export interface HistoryTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export function buildMessages(
   mode: AiMode,
   stage: Stage | undefined,
   ctx: ProjectContext,
   build: BuildResult | null,
-  userText?: string
+  userText?: string,
+  history?: HistoryTurn[]
 ): { role: 'system' | 'user' | 'assistant'; content: string }[] {
   const system = `${BASE_SYSTEM}\n\n${MODE_INSTRUCTION[mode]}`;
   const user = `${buildContext(stage, ctx, build)}${userText && userText.trim() ? '\n\n## 学生补充\n' + userText.trim() : ''}`;
-  return [
+  const msgs: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
     { role: 'system', content: system },
     { role: 'user', content: user },
   ];
+  if (history && history.length) {
+    // 历史对话放在「当前提问」之前，让 AI 记得之前的上下文。
+    msgs.splice(1, 0, ...history);
+  }
+  return msgs;
 }

@@ -209,9 +209,10 @@ async function runBuild(payload, emit) {
     } else {
       // tokens / ast / stdout: compare the compiler's stdout against expected.
       const flags = tc.mode === 'tokens' ? ['-t'] : tc.mode === 'ast' ? ['-a'] : (tc.flags || '').split(/\s+/).filter(Boolean);
-      const run = await runCmd(compilerBin, [...flags, srcFile], { cwd: workDir });
+      const args = tc.noSource ? flags : [...flags, srcFile];
+      const run = await runCmd(compilerBin, args, { cwd: workDir });
       result.actualExit = run.code;
-      steps.push({ name: '运行编译器', status: run.code === 0 ? 'ok' : 'fail', detail: `mycc ${flags.join(' ')} ${tc.id}.c` });
+      steps.push({ name: '运行编译器', status: run.code === 0 ? 'ok' : 'fail', detail: `mycc ${args.join(' ')}` });
       if (run.code !== 0) {
         result.note = `编译器退出码 ${run.code}：${(run.stderr || run.stdout || '').slice(0, 1500)}`;
         result.actual = run.stdout;
