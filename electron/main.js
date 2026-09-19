@@ -303,7 +303,8 @@ function registerIpc() {
     let full = null;
     if (kind === 'sys') {
       const gccBin = toolchain.bundledGccBin(app.getAppPath());
-      const w64root = gccBin ? path.join(path.dirname(gccBin), '..') : (app.getAppPath() ? path.join(app.getAppPath(), 'vendor', 'w64devkit') : null);
+      // bundledGccBin 返回的是 .../w64devkit/bin 目录，其上一级才是 w64devkit 根目录
+      const w64root = gccBin ? path.dirname(gccBin) : (app.getAppPath() ? path.join(app.getAppPath(), 'vendor', 'w64devkit') : null);
       if (w64root) {
         // 1) C / Windows 头文件：include/<name>
         const direct = path.join(w64root, 'include', name);
