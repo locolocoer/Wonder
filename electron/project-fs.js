@@ -30,13 +30,14 @@ function walkDir(dir, root, out) {
     return a.name.localeCompare(b.name);
   });
   for (const e of entries) {
-    if (e.name.startsWith('.')) continue;
     if (e.isDirectory()) {
-      if (EXCLUDED_DIRS.has(e.name)) continue;
+      // 隐藏点目录与常见排除目录（.git、node_modules 等）
+      if (e.name.startsWith('.') || EXCLUDED_DIRS.has(e.name)) continue;
       const full = path.join(dir, e.name);
       out.push({ path: path.relative(root, full).split(path.sep).join('/'), name: e.name, type: 'dir' });
       walkDir(full, root, out);
     } else if (e.isFile()) {
+      // 显示点文件（如 .gitignore、.editorconfig）
       const full = path.join(dir, e.name);
       out.push({ path: path.relative(root, full).split(path.sep).join('/'), name: e.name, type: 'file' });
     }
