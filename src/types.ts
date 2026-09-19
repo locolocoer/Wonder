@@ -142,6 +142,8 @@ export interface FileTab {
   name: string;
   content: string;
   dirty: boolean;
+  /** 只读标签（如「参考答案」），不参与保存 */
+  readOnly?: boolean;
 }
 
 declare global {
@@ -191,6 +193,7 @@ declare global {
       aiAbort(id: string): Promise<{ ok: boolean }>;
       openExternal(url: string): Promise<{ ok: boolean }>;
       revealPath(rel: string): Promise<{ ok: boolean }>;
+      readReference(): Promise<{ ok: boolean; content?: string; error?: string }>;
       onEvent(channel: string, cb: (data: any) => void): () => void;
     };
   }

@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('api', {
 
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
   revealPath: (rel) => ipcRenderer.invoke('app:reveal-path', rel),
+  readReference: () => ipcRenderer.invoke('app:read-reference'),
 
   onEvent: (channel, cb) => {
     const listener = (_event, data) => cb(data);

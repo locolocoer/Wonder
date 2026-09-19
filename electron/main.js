@@ -233,10 +233,22 @@ function registerIpc() {
   ipcMain.handle('project:init-starter', () => {
     const projectDir = settings.projectDir;
     if (!projectDir) return { ok: false, error: '请先选择工程目录' };
-    const starter = path.join(app.getAppPath(), 'starter');
-    if (!fs.existsSync(starter)) return { ok: false, error: '起始模板不存在' };
-    fs.cpSync(starter, projectDir, { recursive: true, force: false, errorOnExist: false });
+    try {
+      // 初始化为「空工程」：只确保目录存在，不复制任何代码，全部由学生自己写。
+      fs.mkdirSync(projectDir, { recursive: true });
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
     return { ok: true, ...projectFs.listProject(projectDir) };
+  });
+
+  ipcMain.handle('app:read-reference', () => {
+    const ref = path.join(app.getAppPath(), 'starter', 'reference', 'mycc.c');
+    try {
+      return { ok: true, content: fs.readFileSync(ref, 'utf8') };
+    } catch {
+      return { ok: false, error: '参考答案文件不存在' };
+    }
   });
 
   ipcMain.handle('project:list', () => {

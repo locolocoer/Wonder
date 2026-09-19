@@ -14,7 +14,7 @@ export const PROJECT_INTRO: string[] = [
   '编译器四段流水线（本课程按这个顺序拆成 6 个阶段）：① 词法分析（切 token）→ ② 语法分析（建 AST）→ ③ 语义分析（符号表）→ ④ 代码生成（出汇编）。',
   '你需要会一点 C 语言基础：指针、结构体、malloc/free、字符串（strcmp/strdup）、链表、文件读写（fopen/fread）。以及会用命令行。',
   '怎么用：左侧「课程路线」按阶段推进，每阶段先看「需要修改的文件」和「基础知识」，再动手写代码；写完点底部「▶ 编译并测试」看结果，绿了再进下一阶段。',
-  '卡住了怎么办：先用右上角「💡 给点提示 / 🧩 拆分当前任务」问 AI 导师；工程的 reference/mycc.c 是完整参考答案，实在过不去再对照看。',
+  '卡住了怎么办：先用右上角「💡 给点提示 / 🧩 拆分当前任务」问 AI 导师；实在过不去，可点顶部「📖 参考答案」只读查看完整实现对照。',
   '每个阶段的测试只测「当前阶段」，最后可用「🧪 全量回归」一键跑全部阶段，防止前面学过的功能被改坏。',
 ];
 
@@ -25,9 +25,9 @@ export const CURRICULUM: Stage[] = [
     title: '工程骨架与命令行',
     summary: '搭建项目结构、解析命令行参数、读取源文件。这是编译器的入口，后面所有阶段都在此之上累加。',
     files: [
-      'src/main.c —— 本阶段主战场：解析命令行参数、读文件、分发到 lex/parse/codegen',
-      '（可选）build.bat / Makefile —— 把源码一键编译成 mycc 的构建脚本',
-      '暂时不用动：src/lexer.c、src/parser.c、src/codegen.c（后续阶段再填）',
+      '新建 src 目录，再新建 src/main.c —— 编译器入口：解析命令行参数、读文件、分发到 lex/parse/codegen',
+      '新建 build.bat 或 Makefile —— 把源码一键编译成 mycc 的构建脚本',
+      '本阶段先不建 lexer.c / parser.c / codegen.c，后续阶段再补',
     ],
     background: [
       '编译器是什么：把「人读的源代码」翻译成「机器能执行的代码」的程序。本项目翻译成 x86-64 汇编，再交给 gcc 汇编+链接成可执行文件。',
@@ -74,10 +74,10 @@ export const CURRICULUM: Stage[] = [
     title: '词法分析 Lexer',
     summary: '把字符流切分成 token（标识符、关键字、数字、运算符、标点），并支持 -t 打印 token 序列。',
     files: [
-      'src/lexer.c —— 实现 lex()：把字符流切成 token 链表（本阶段核心）',
-      'src/token.h —— 确认 TokenKind 枚举与 Token 结构（一般已定义好，不必改）',
-      'src/lexer.h —— 确认 lex() 声明（一般已定义好）',
-      '不改：src/main.c 里的 -t 分支已经会遍历 token 链表并打印',
+      '新建 src/token.h —— 定义 TokenKind 枚举（IDENT/NUM/STR/KEYWORD/PUNCT/EOF）与 Token 结构（含 next 指针、str、val）',
+      '新建 src/lexer.c —— 实现 lex()：把字符流切成 token 链表（本阶段核心）',
+      '新建 src/lexer.h —— 声明 lex() 与 token_kind_name()',
+      '改动 src/main.c —— 加 -t 分支：遍历 token 链表逐行打印',
     ],
     background: [
       '什么是 token：源代码里不可再分的最小单元。例如 return、42、+、; 各是一个 token。',
@@ -199,9 +199,9 @@ export const CURRICULUM: Stage[] = [
     title: '语法分析 Parser + AST',
     summary: '递归下降解析，把 token 流构建成抽象语法树（AST），并支持 -a 打印 S 表达式。',
     files: [
-      'src/parser.c —— 实现 parse()（递归下降解析）与 dump_ast()（打印 S 表达式）',
-      'src/parser.h —— 确认 Node 结构与函数声明（一般已定义好）',
-      '不改：src/lexer.c（词法已完成）',
+      '新建 src/parser.h —— 定义 AST 节点结构（Node：num/var/bin/unary/assign/return/block/if/while/for/decl/func）与 parse()/dump_ast() 声明',
+      '新建 src/parser.c —— 实现 parse()（递归下降解析）与 dump_ast()（打印 S 表达式）',
+      '改动 src/main.c —— 加 -a 分支：调用 parse() 后 dump_ast()',
     ],
     background: [
       '什么是语法分析：检查 token 的顺序是否符合语法规则，并把它组织成一棵树（AST，抽象语法树）。',
@@ -269,9 +269,9 @@ export const CURRICULUM: Stage[] = [
     title: '语义分析与符号表',
     summary: '为变量建立符号表（作用域 + 类型），检测未定义变量、重复声明等语义错误。',
     files: [
-      'src/parser.c —— 在 parse() 里维护作用域栈 + 符号表，并报语义错误（本阶段核心）',
-      '（可选）新增 src/symbol.c / src/symbol.h —— 把符号表单独拆出来，结构更清晰',
-      '不改：src/lexer.c、src/codegen.c',
+      '改动 src/parser.c —— 在 parse() 里维护作用域栈 + 符号表，并报语义错误（本阶段核心）',
+      '（可选）新建 src/symbol.c / src/symbol.h —— 把符号表单独拆出来，结构更清晰',
+      '不改：src/lexer.c',
     ],
     background: [
       '什么是语义分析：语法正确之后再做「意义」检查——变量声明过没有、类型对不对。本项目主要做符号表。',
@@ -329,8 +329,9 @@ export const CURRICULUM: Stage[] = [
     title: '代码生成 Codegen',
     summary: '把 AST 翻译成 x86-64 AT&T 汇编，用系统 gcc 汇编链接后运行，通过退出码验证结果。',
     files: [
-      'src/codegen.c —— 实现 codegen()：遍历 AST 输出汇编到 stdout（本阶段核心）',
-      '（可选）src/codegen.h —— 确认 codegen() 声明',
+      '新建 src/codegen.h —— 声明 codegen()',
+      '新建 src/codegen.c —— 实现 codegen()：遍历 AST 输出汇编到 stdout（本阶段核心）',
+      '改动 src/main.c —— 默认模式（无 -t/-a）调用 codegen() 输出汇编',
       '不改：src/lexer.c、src/parser.c',
     ],
     background: [

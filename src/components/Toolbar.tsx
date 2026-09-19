@@ -42,6 +42,7 @@ export function Toolbar({
   starterAvailable,
   onChooseProject,
   onInitStarter,
+  onOpenReference,
   onOpenSettings,
   onRunBuild,
 }: {
@@ -51,6 +52,7 @@ export function Toolbar({
   starterAvailable: boolean;
   onChooseProject: () => void;
   onInitStarter: () => void;
+  onOpenReference: () => void;
   onOpenSettings: () => void;
   onRunBuild: () => void;
 }) {
@@ -70,13 +72,16 @@ export function Toolbar({
       <button className="btn" onClick={onChooseProject}>
         {projectDir ? '更换工程' : '选择工程目录'}
       </button>
+      <button className="btn" onClick={onInitStarter} title="把当前工程初始化为空文件夹（不复制任何代码，全部自己写）">
+        初始化空工程
+      </button>
       <button
         className="btn"
-        onClick={onInitStarter}
+        onClick={onOpenReference}
         disabled={!starterAvailable}
-        title={starterAvailable ? '把起始模板复制进当前工程' : '起始模板不可用（应用资源缺失）'}
+        title={starterAvailable ? '只读查看完整参考答案（mycc.c）' : '参考答案不可用（应用资源缺失）'}
       >
-        初始化起始模板
+        📖 参考答案
       </button>
       <span className="project-path" title={projectDir}>
         {projectDir || '（未选择工程）'}

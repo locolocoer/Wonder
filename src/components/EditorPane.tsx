@@ -80,6 +80,7 @@ export function EditorPane({
               tabSize: 4,
               renderWhitespace: 'none',
               smoothScrolling: true,
+              readOnly: Boolean(active.readOnly),
             }}
           />
         ) : (

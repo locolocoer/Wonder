@@ -98,7 +98,7 @@ export function Sidebar({
                     </ul>
                     {s.files && s.files.length > 0 && (
                       <>
-                        <h4>需要修改的文件</h4>
+                        <h4>需要创建/修改的文件</h4>
                         <ul className="stage-files">
                           {s.files.map((f, i) => (
                             <li key={i}>{f}</li>

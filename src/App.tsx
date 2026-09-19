@@ -136,7 +136,7 @@ export default function App() {
 
   // ---- 自动保存：内容变更后 1.5 秒静默写盘，无需手动 Ctrl+S -------------
   useEffect(() => {
-    const dirtyTabs = tabs.filter((t) => t.dirty);
+    const dirtyTabs = tabs.filter((t) => t.dirty && !t.readOnly);
     if (!dirtyTabs.length) return;
     const timer = setTimeout(async () => {
       for (const t of dirtyTabs) {
@@ -208,7 +208,7 @@ export default function App() {
   const saveAll = useCallback(async () => {
     let failed = 0;
     for (const t of tabs) {
-      if (!t.dirty) continue;
+      if (!t.dirty || t.readOnly) continue;
       const r = await window.api.projectWrite(t.path, t.content);
       if (!r.ok) failed++;
     }
@@ -221,7 +221,7 @@ export default function App() {
 
   const saveActive = useCallback(async () => {
     const t = tabs.find((x) => x.path === activePath);
-    if (!t) return;
+    if (!t || t.readOnly) return;
     const r = await window.api.projectWrite(t.path, t.content);
     if (!r.ok) {
       await window.api.dialogMessage({ type: 'error', message: `保存失败：${r.error || '未知错误'}` });
@@ -304,8 +304,23 @@ export default function App() {
       return;
     }
     await loadFiles();
-    // 打开 main.c
-    await openFile('src/main.c');
+    await window.api.dialogMessage({
+      message: '工程已初始化为空文件夹。\n\n从左侧「课程路线」的阶段 1 开始，按「需要创建的文件」自己动手写代码。',
+    });
+  };
+
+  const openReference = async () => {
+    const r = await window.api.readReference();
+    if (!r.ok) {
+      await window.api.dialogMessage({ type: 'error', message: r.error || '读取失败' });
+      return;
+    }
+    const refPath = '[参考答案] mycc.c';
+    setTabs((prev) => {
+      if (prev.some((t) => t.path === refPath)) return prev;
+      return [...prev, { path: refPath, name: 'mycc.c（参考答案）', content: r.content || '', dirty: false, readOnly: true }];
+    });
+    setActivePath(refPath);
   };
 
   const createFile = async (path: string, kind: 'file' | 'dir') => {
@@ -563,6 +578,7 @@ export default function App() {
         starterAvailable={starterAvailable}
         onChooseProject={chooseProject}
         onInitStarter={initStarter}
+        onOpenReference={openReference}
         onOpenSettings={() => setShowSettings(true)}
         onRunBuild={runBuild}
       />
