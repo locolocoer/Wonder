@@ -10,6 +10,7 @@ export interface ToolInfo {
 
 export interface ToolchainInfo {
   cc: ToolInfo;
+  cxx: ToolInfo;
   asm: ToolInfo;
   available: boolean;
   missing: string[];
@@ -23,6 +24,7 @@ export interface Settings {
   toolchain: { ccPath: string; asmPath: string };
   projectDir: string;
   theme: 'vs-dark' | 'vs' | 'hc-black';
+  language: 'c' | 'cpp';
 }
 
 export interface BootInfo {
@@ -163,7 +165,7 @@ declare global {
       projectCreate(rel: string, kind: 'file' | 'dir'): Promise<{ ok: boolean; error?: string }>;
       projectDelete(rel: string): Promise<{ ok: boolean; error?: string }>;
       projectRename(rel: string, newName: string): Promise<{ ok: boolean; error?: string }>;
-      buildRun(payload: { testCases: TestCase[]; ccPath?: string }): Promise<BuildResult>;
+      buildRun(payload: { testCases: TestCase[]; ccPath?: string; language?: 'c' | 'cpp' }): Promise<BuildResult>;
       shellRun(cmd: string): Promise<{ ok: boolean; code?: number; stdout?: string; stderr?: string; timedOut?: boolean; error?: string }>;
       termRun(cmd: string): Promise<{ ok: boolean }>;
       termKill(): Promise<{ ok: boolean }>;

@@ -135,6 +135,14 @@ function bundledGcc(appPath) {
   return existsExec(gcc) ? gcc : null;
 }
 
+/** 内置 g++ 可执行文件路径（w64devkit 自带）。 */
+function bundledCxx(appPath) {
+  const bin = bundledGccBin(appPath);
+  if (!bin) return null;
+  const cxx = path.join(bin, process.platform === 'win32' ? 'g++.exe' : 'g++');
+  return existsExec(cxx) ? cxx : null;
+}
+
 /**
  * Detect the C toolchain. `settings` may contain { toolchain: { ccPath, asmPath } }.
  * Priority for the effective compiler:
@@ -164,12 +172,23 @@ function detectToolchain(settings, appPath) {
     }
   }
 
+  // C++ 编译器（g++）：优先内置 w64devkit 的 g++，其次系统 g++。
+  let cxx;
+  const bundledC = bundledCxx(appPath);
+  if (bundledC) {
+    cxx = { found: true, path: bundledC, name: 'g++', version: probeVersion(bundledC), builtin: true };
+  } else {
+    cxx = locate('g++', null);
+    if (cxx.found) cxx.builtin = false;
+  }
+
   const asm = locateFirst(ASM_CANDIDATES, tc.asmPath);
-  const available = cc.found;
+  const available = cc.found || cxx.found;
   const missing = [];
   if (!cc.found) missing.push('C 编译器');
+  if (!cxx.found) missing.push('C++ 编译器 (g++)');
   if (!asm.found) missing.push('汇编器 (nasm/as)');
-  return { cc, asm, available, missing };
+  return { cc, cxx, asm, available, missing };
 }
 
-module.exports = { detectToolchain, bundledGcc, bundledGccBin, CC_CANDIDATES, ASM_CANDIDATES };
+module.exports = { detectToolchain, bundledGcc, bundledCxx, bundledGccBin, CC_CANDIDATES, ASM_CANDIDATES };

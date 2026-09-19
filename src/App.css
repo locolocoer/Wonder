@@ -432,6 +432,16 @@ body.resizing .center {
   color: var(--fg-dim);
 }
 
+.stage-body .cpp-note {
+  margin: 4px 0;
+  padding: 6px 8px;
+  font-size: 11.5px;
+  color: var(--yellow);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
 /* ---------- Editor ---------- */
 .editor-area {
   flex: 1 1 auto;

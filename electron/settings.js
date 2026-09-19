@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS = {
   toolchain: { ccPath: '', asmPath: '' },
   projectDir: '',
   theme: 'vs-dark',
+  language: 'c', // 实现语言：'c' 或 'cpp'
 };
 
 function settingsPath(app) {

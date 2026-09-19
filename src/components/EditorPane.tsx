@@ -55,6 +55,7 @@ export function EditorPane({
 
   const langFor = (name: string): string => {
     const n = name.toLowerCase();
+    if (/\.(cpp|cc|cxx|hpp)$/.test(n)) return 'cpp';
     if (/\.(c|h)$/.test(n)) return 'c';
     if (/\.(md|markdown)$/.test(n)) return 'markdown';
     if (/\.json$/.test(n)) return 'json';

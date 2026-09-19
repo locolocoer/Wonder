@@ -243,7 +243,8 @@ function registerIpc() {
   });
 
   ipcMain.handle('app:read-reference', () => {
-    const ref = path.join(app.getAppPath(), 'starter', 'reference', 'mycc.c');
+    const isCpp = settings.language === 'cpp';
+    const ref = path.join(app.getAppPath(), 'starter', 'reference', isCpp ? 'mycc.cpp' : 'mycc.c');
     try {
       return { ok: true, content: fs.readFileSync(ref, 'utf8') };
     } catch {
@@ -336,11 +337,13 @@ function registerIpc() {
       }
     };
     try {
-      const effectiveCc =
-        payload.ccPath && payload.ccPath.trim()
-          ? payload.ccPath.trim()
-          : toolchain.detectToolchain(settings, app.getAppPath()).cc.path;
-      return await buildRunner.runBuild({ ...payload, projectDir: settings.projectDir, ccPath: effectiveCc }, send);
+      const lang = payload.language === 'cpp' ? 'cpp' : 'c';
+      const tc = toolchain.detectToolchain(settings, app.getAppPath());
+      let effectiveCc = payload.ccPath && payload.ccPath.trim() ? payload.ccPath.trim() : '';
+      if (!effectiveCc) {
+        effectiveCc = lang === 'cpp' ? tc.cxx.path || tc.cc.path : tc.cc.path;
+      }
+      return await buildRunner.runBuild({ ...payload, language: lang, projectDir: settings.projectDir, ccPath: effectiveCc }, send);
     } catch (e) {
       return { ok: false, error: e.message, results: [] };
     }

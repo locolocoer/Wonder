@@ -23,6 +23,7 @@ export function SettingsModal({
   const [ccPath, setCcPath] = useState(settings.toolchain.ccPath);
   const [asmPath, setAsmPath] = useState(settings.toolchain.asmPath);
   const [theme, setTheme] = useState(settings.theme);
+  const [language, setLanguage] = useState(settings.language);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
 
   useEffect(() => {
@@ -60,6 +61,7 @@ export function SettingsModal({
       temperature: Number(temperature) || 0.6,
       toolchain: { ccPath: ccPath.trim(), asmPath: asmPath.trim() },
       theme,
+      language,
     });
     onClose();
   };
@@ -106,6 +108,17 @@ export function SettingsModal({
             <option value="vs">浅色（vs）</option>
             <option value="hc-black">高对比度（hc-black）</option>
           </select>
+        </div>
+
+        <div className="field">
+          <label>实现语言</label>
+          <select value={language} onChange={(e) => setLanguage(e.target.value as Settings['language'])}>
+            <option value="c">C（gcc）</option>
+            <option value="cpp">C++（g++）</option>
+          </select>
+          <div className="hint">
+            决定你用什么语言编写编译器（mycc）：C 用 gcc、C++ 用 g++。编译的目标语言始终是同一个 C 子集。
+          </div>
         </div>
 
         <div className="field">

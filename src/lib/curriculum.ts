@@ -12,6 +12,7 @@ import type { Stage } from '../types';
 export const PROJECT_INTRO: string[] = [
   '项目目标：用 C 语言从零写一个「C 语言子集」编译器——它读入 .c 源码，先词法分析、再语法分析、再语义分析，最后输出 x86-64 汇编，交给 gcc 汇编链接成能运行的程序。',
   '编译器四段流水线（本课程按这个顺序拆成 6 个阶段）：① 词法分析（切 token）→ ② 语法分析（建 AST）→ ③ 语义分析（符号表）→ ④ 代码生成（出汇编）。',
+  '实现语言可选：在「设置 → 实现语言」里选 C（gcc）或 C++（g++）。不管用哪种语言写编译器，它编译的目标语言都是同一个 C 子集。',
   '你需要会一点 C 语言基础：指针、结构体、malloc/free、字符串（strcmp/strdup）、链表、文件读写（fopen/fread）。以及会用命令行。',
   '怎么用：左侧「课程路线」按阶段推进，每阶段先看「需要修改的文件」和「基础知识」，再动手写代码；写完点底部「▶ 编译并测试」看结果，绿了再进下一阶段。',
   '卡住了怎么办：先用右上角「💡 给点提示 / 🧩 拆分当前任务」问 AI 导师；实在过不去，可点顶部「📖 参考答案」只读查看完整实现对照。',
@@ -416,4 +417,12 @@ export const CURRICULUM: Stage[] = [
 
 export function findStage(id: string): Stage | undefined {
   return CURRICULUM.find((s) => s.id === id);
+}
+
+/** 根据实现语言把文件/命令说明本地化：C++ 下 .c → .cpp、gcc → g++。 */
+export function localizeText(text: string, language: 'c' | 'cpp'): string {
+  if (language === 'c') return text;
+  return text
+    .replace(/\.c\b/g, '.cpp')
+    .replace(/\bgcc\b/g, 'g++');
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Stage, ProjectFile } from '../types';
-import { PROJECT_INTRO } from '../lib/curriculum';
+import { PROJECT_INTRO, localizeText } from '../lib/curriculum';
 import { FileTree } from './FileTree';
 import { GitPanel } from './GitPanel';
 
@@ -12,6 +12,7 @@ export function Sidebar({
   completedIds,
   files,
   activePath,
+  language,
   tab,
   onTabChange,
   createPending,
@@ -32,6 +33,7 @@ export function Sidebar({
   completedIds: Set<string>;
   files: ProjectFile[];
   activePath: string;
+  language: 'c' | 'cpp';
   tab: 'course' | 'files' | 'git';
   onTabChange: (tab: 'course' | 'files' | 'git') => void;
   createPending: boolean;
@@ -101,7 +103,7 @@ export function Sidebar({
                         <h4>需要创建/修改的文件</h4>
                         <ul className="stage-files">
                           {s.files.map((f, i) => (
-                            <li key={i}>{f}</li>
+                            <li key={i}>{localizeText(f, language)}</li>
                           ))}
                         </ul>
                       </>
@@ -109,6 +111,11 @@ export function Sidebar({
                     {s.background && s.background.length > 0 && (
                       <>
                         <h4>基础知识</h4>
+                        {language === 'cpp' && (
+                          <div className="cpp-note">
+                            C++ 提示：下面以 C 为例讲解概念，用 C++ 实现时对应使用 std::string、new/delete、&lt;iostream&gt;/&lt;fstream&gt; 等。
+                          </div>
+                        )}
                         <ul className="stage-background">
                           {s.background.map((b, i) => (
                             <li key={i}>{b}</li>

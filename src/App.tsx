@@ -343,7 +343,8 @@ export default function App() {
       await window.api.dialogMessage({ type: 'error', message: r.error || '读取失败' });
       return;
     }
-    openReadOnlyTab('[参考答案] mycc.c', 'mycc.c（参考答案）', r.content || '');
+    const fname = settings?.language === 'cpp' ? 'mycc.cpp' : 'mycc.c';
+    openReadOnlyTab(`[参考答案] ${fname}`, `${fname}（参考答案）`, r.content || '');
   };
 
   // Ctrl+点击 #include 头文件 → 应用内只读打开头文件
@@ -469,7 +470,7 @@ export default function App() {
     setBuildResult(null);
     try {
       const testCases = effectiveScope === 'all' ? CURRICULUM.flatMap((s) => s.testCases) : stage.testCases;
-      const res = await window.api.buildRun({ testCases, ccPath: settings.toolchain.ccPath });
+      const res = await window.api.buildRun({ testCases, ccPath: settings.toolchain.ccPath, language: settings.language });
       setBuildResult(res);
       if (res.ok && res.failCount === 0 && res.total > 0 && effectiveScope === 'stage') {
         recordStagePass(currentStageId);
@@ -522,7 +523,7 @@ export default function App() {
     const includeContent = (f: ProjectFile) => {
       if (f.path.startsWith('reference/') || f.path.startsWith('tests/') || f.path.startsWith('.trainer-tests/')) return false;
       const name = f.name.toLowerCase();
-      return /\.(c|h)$/.test(f.name) || name === 'makefile' || /\.(bat|sh)$/.test(f.name) || /\.(md|txt)$/.test(f.name);
+      return /\.(c|h|cpp|cc|cxx|hpp)$/.test(f.name) || name === 'makefile' || /\.(bat|sh)$/.test(f.name) || /\.(md|txt)$/.test(f.name);
     };
     for (const f of files) {
       if (!includeContent(f)) continue;
@@ -625,6 +626,7 @@ export default function App() {
         toolchain={toolchain}
         buildRunning={buildRunning}
         starterAvailable={starterAvailable}
+        language={settings.language}
         onChooseProject={chooseProject}
         onInitStarter={initStarter}
         onOpenReference={openReference}
@@ -640,6 +642,7 @@ export default function App() {
           completedIds={completedIds}
           files={files}
           activePath={activePath}
+          language={settings.language}
           tab={sidebarTab}
           onTabChange={setSidebarTab}
           createPending={createPending}

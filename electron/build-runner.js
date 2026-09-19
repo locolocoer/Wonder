@@ -40,18 +40,19 @@ function runCmd(file, args, opts = {}) {
   });
 }
 
-function walkCFiles(dir, out = []) {
+function walkSources(dir, language, out = []) {
   let entries;
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
   } catch {
     return out;
   }
+  const re = language === 'cpp' ? /\.(cpp|cc|cxx)$/i : /\.c$/i;
   for (const e of entries) {
     if (e.name.startsWith('.')) continue;
     const full = path.join(dir, e.name);
-    if (e.isDirectory()) walkCFiles(full, out);
-    else if (e.isFile() && /\.c$/i.test(e.name)) out.push(full);
+    if (e.isDirectory()) walkSources(full, language, out);
+    else if (e.isFile() && re.test(e.name)) out.push(full);
   }
   return out;
 }
@@ -87,8 +88,8 @@ function exeName(name) {
  * Emits build:log events via `emit(type, text, testId)`.
  */
 async function runBuild(payload, emit) {
-  const { projectDir, ccPath, testCases = [] } = payload;
-  const cc = ccPath || 'gcc';
+  const { projectDir, ccPath, testCases = [], language = 'c' } = payload;
+  const cc = ccPath || (language === 'cpp' ? 'g++' : 'gcc');
   const log = (type, text, testId) => emit(type, text, testId);
 
   const results = [];
@@ -96,12 +97,13 @@ async function runBuild(payload, emit) {
 
   // 1. Compile the user's compiler.
   const srcDir = path.join(projectDir, 'src');
-  const sources = walkCFiles(srcDir);
+  const sources = walkSources(srcDir, language);
   if (!sources.length) {
+    const ext = language === 'cpp' ? '.cpp' : '.c';
     return {
       ok: false,
       compileOk: false,
-      error: '未在 src/ 目录下找到任何 .c 源文件。请先创建你的编译器源码（如 main.c、lexer.c）。',
+      error: `未在 src/ 目录下找到任何 ${ext} 源文件。请先创建你的编译器源码（如 main${ext}、lexer${ext}）。`,
       results,
     };
   }

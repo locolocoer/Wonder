@@ -40,6 +40,7 @@ export function Toolbar({
   toolchain,
   buildRunning,
   starterAvailable,
+  language,
   onChooseProject,
   onInitStarter,
   onOpenReference,
@@ -50,6 +51,7 @@ export function Toolbar({
   toolchain: ToolchainInfo;
   buildRunning: boolean;
   starterAvailable: boolean;
+  language: 'c' | 'cpp';
   onChooseProject: () => void;
   onInitStarter: () => void;
   onOpenReference: () => void;
@@ -89,10 +91,12 @@ export function Toolbar({
       <span className="spacer" />
       <span className={`badge ${toolchain.available ? 'ok' : 'warn'}`}>
         {toolchain.available
-          ? toolchain.cc.builtin
-            ? `🛠 内置 ${toolchain.cc.name} 可用`
-            : `🛠 ${toolchain.cc.name} 可用`
-          : '⚠ 未检测到 C 编译器'}
+          ? (language === 'cpp' ? toolchain.cxx : toolchain.cc).builtin
+            ? `🛠 内置 ${language === 'cpp' ? 'g++' : 'gcc'} 可用`
+            : `🛠 ${language === 'cpp' ? 'g++' : 'gcc'} 可用`
+          : language === 'cpp'
+            ? '⚠ 未检测到 C++ 编译器'
+            : '⚠ 未检测到 C 编译器'}
       </span>
       <button className="btn primary" onClick={() => onRunBuild()} disabled={buildRunning || !projectDir}>
         {buildRunning ? '运行中…' : '▶ 编译并测试'}
