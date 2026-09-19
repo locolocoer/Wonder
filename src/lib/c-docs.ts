@@ -9,11 +9,6 @@ export interface CDocEntry {
   url: string;
 }
 
-/** 供应用内文档面板查询函数说明。 */
-export function getCDoc(name: string): CDocEntry | undefined {
-  return DOCS[name];
-}
-
 const DOCS: Record<string, CDocEntry> = {
   // ---- 文件操作 ----
   fopen: {
@@ -238,6 +233,150 @@ const DOCS: Record<string, CDocEntry> = {
   },
 };
 
+// C++ 标准库常用组件（键用不带 std:: 的名字，方便悬浮/跳转命中 std::cout 中的 cout）
+const CXX_DOCS: Record<string, CDocEntry> = {
+  cout: {
+    sig: 'std::ostream cout;',
+    desc: '标准输出流对象，配合 << 输出到屏幕，如 std::cout << "hi" << std::endl;。',
+    url: 'https://zh.cppreference.com/w/cpp/io/cout',
+  },
+  cin: {
+    sig: 'std::istream cin;',
+    desc: '标准输入流对象，配合 >> 从键盘读取，如 std::cin >> x;。',
+    url: 'https://zh.cppreference.com/w/cpp/io/cin',
+  },
+  cerr: {
+    sig: 'std::ostream cerr;',
+    desc: '标准错误输出流（无缓冲），常用于报错：std::cerr << "错误" << std::endl;。',
+    url: 'https://zh.cppreference.com/w/cpp/io/cerr',
+  },
+  endl: {
+    sig: 'std::ostream& endl(std::ostream& os);',
+    desc: '输出换行并刷新缓冲区：std::cout << x << std::endl;。',
+    url: 'https://zh.cppreference.com/w/cpp/io/manip/endl',
+  },
+  string: {
+    sig: 'std::string;',
+    desc: 'C++ 字符串类，自动管理内存。常用：size()、substr()、find()、c_str()、+= 拼接、== 比较。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string',
+  },
+  getline: {
+    sig: 'std::istream& getline(std::istream& is, std::string& str);',
+    desc: '从输入流读取一整行到 string（可含空格）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/getline',
+  },
+  stoi: {
+    sig: 'int stoi(const std::string& str, size_t* pos = 0, int base = 10);',
+    desc: '把字符串转成 int（如 "42" → 42）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/stol',
+  },
+  to_string: {
+    sig: 'std::string to_string(int value);',
+    desc: '把数值转成字符串。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/to_string',
+  },
+  vector: {
+    sig: 'std::vector<T>;',
+    desc: '动态数组容器。常用：push_back()、size()、back()、pop_back()、下标 [] 访问。',
+    url: 'https://zh.cppreference.com/w/cpp/container/vector',
+  },
+  push_back: {
+    sig: 'void push_back(const T& value);',
+    desc: '向 vector/string 等容器末尾追加一个元素。',
+    url: 'https://zh.cppreference.com/w/cpp/container/vector/push_back',
+  },
+  size: {
+    sig: 'size_type size() const;',
+    desc: '返回容器/字符串的元素个数。',
+    url: 'https://zh.cppreference.com/w/cpp/container/vector/size',
+  },
+  back: {
+    sig: 'T& back();',
+    desc: '返回容器最后一个元素的引用。',
+    url: 'https://zh.cppreference.com/w/cpp/container/vector/back',
+  },
+  pop_back: {
+    sig: 'void pop_back();',
+    desc: '移除容器末尾的一个元素。',
+    url: 'https://zh.cppreference.com/w/cpp/container/vector/pop_back',
+  },
+  ifstream: {
+    sig: 'std::ifstream;',
+    desc: '文件输入流（读文件）。用 .open(path) 打开、.is_open() 判断是否成功、.close() 关闭。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_ifstream',
+  },
+  ofstream: {
+    sig: 'std::ofstream;',
+    desc: '文件输出流（写文件）。用 .open(path) 打开、<< 写入、.close() 关闭。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_ofstream',
+  },
+  ostringstream: {
+    sig: 'std::ostringstream;',
+    desc: '字符串输出流，用 << 拼接，.str() 取出结果字符串（读文件常用它累积内容）。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_ostringstream',
+  },
+  istringstream: {
+    sig: 'std::istringstream;',
+    desc: '字符串输入流，从字符串里用 >> 读取数据。',
+    url: 'https://zh.cppreference.com/w/cpp/io/basic_istringstream',
+  },
+  sort: {
+    sig: 'void sort(RandomIt first, RandomIt last);',
+    desc: '对 [first, last) 区间排序：std::sort(v.begin(), v.end());。',
+    url: 'https://zh.cppreference.com/w/cpp/algorithm/sort',
+  },
+  unique_ptr: {
+    sig: 'std::unique_ptr<T>;',
+    desc: '独占所有权的智能指针，自动 delete。用 std::make_unique<T>(...) 创建。',
+    url: 'https://zh.cppreference.com/w/cpp/memory/unique_ptr',
+  },
+  make_unique: {
+    sig: 'std::make_unique<T>(args...);',
+    desc: '创建并返回 std::unique_ptr<T>。',
+    url: 'https://zh.cppreference.com/w/cpp/memory/unique_ptr/make_unique',
+  },
+  shared_ptr: {
+    sig: 'std::shared_ptr<T>;',
+    desc: '共享所有权的智能指针，引用计数归零时自动释放。',
+    url: 'https://zh.cppreference.com/w/cpp/memory/shared_ptr',
+  },
+  make_shared: {
+    sig: 'std::make_shared<T>(args...);',
+    desc: '创建并返回 std::shared_ptr<T>。',
+    url: 'https://zh.cppreference.com/w/cpp/memory/shared_ptr/make_shared',
+  },
+  move: {
+    sig: 'std::move(t);',
+    desc: '把对象转换为右值引用，用于移动语义。',
+    url: 'https://zh.cppreference.com/w/cpp/utility/move',
+  },
+  length: {
+    sig: 'size_type length() const;',
+    desc: '返回字符串长度（同 size()）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/size',
+  },
+  substr: {
+    sig: 'std::string substr(size_type pos = 0, size_type count = npos) const;',
+    desc: '返回从 pos 开始的子串。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/substr',
+  },
+  find: {
+    sig: 'size_type find(const std::string& str, size_type pos = 0) const;',
+    desc: '在字符串中查找子串，返回首次出现位置（找不到返回 std::string::npos）。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/find',
+  },
+  c_str: {
+    sig: 'const char* c_str() const;',
+    desc: '返回 C 风格字符串（const char*），供需要 C 接口的地方使用。',
+    url: 'https://zh.cppreference.com/w/cpp/string/basic_string/c_str',
+  },
+};
+
+/** 供应用内文档面板查询函数说明。 */
+export function getCDoc(name: string): CDocEntry | undefined {
+  return DOCS[name] || CXX_DOCS[name];
+}
+
 // C 关键字（用于代码补全）
 const C_KEYWORDS: string[] = [
   'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do',
@@ -246,17 +385,24 @@ const C_KEYWORDS: string[] = [
   'static', 'struct', 'switch', 'typedef', 'union', 'unsigned', 'void', 'volatile', 'while',
 ];
 
+// C++ 关键字（代码补全用）
+const CXX_KEYWORDS: string[] = [
+  'class', 'namespace', 'using', 'template', 'typename', 'public', 'private',
+  'protected', 'virtual', 'override', 'constexpr', 'auto', 'new', 'delete',
+  'nullptr', 'true', 'false', 'this', 'try', 'catch', 'throw', 'friend', 'operator',
+];
+
 let registered = false;
 
 export function registerCDocs(): void {
   if (registered) return;
   registered = true;
 
-  const hoverProvider: monaco.languages.HoverProvider = {
+  const makeHover = (docs: Record<string, CDocEntry>): monaco.languages.HoverProvider => ({
     provideHover(model, position) {
       const word = model.getWordAtPosition(position);
       if (!word) return null;
-      const d = DOCS[word.word];
+      const d = docs[word.word];
       if (!d) return null;
       return {
         range: new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn),
@@ -265,20 +411,19 @@ export function registerCDocs(): void {
         ],
       };
     },
-  };
+  });
 
-  const definitionProvider: monaco.languages.DefinitionProvider = {
+  const makeDefinition = (docs: Record<string, CDocEntry>): monaco.languages.DefinitionProvider => ({
     provideDefinition(model, position) {
       const word = model.getWordAtPosition(position);
       if (!word) return null;
-      const d = DOCS[word.word];
-      if (!d) return null;
+      if (!docs[word.word]) return null;
       return {
         uri: monaco.Uri.from({ scheme: 'wonder-doc', path: '/' + word.word }),
         range: new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn),
       };
     },
-  };
+  });
 
   // #include 行内 Ctrl+点击 → 打开头文件
   const headerProvider: monaco.languages.DefinitionProvider = {
@@ -300,19 +445,19 @@ export function registerCDocs(): void {
     },
   };
 
-  // 代码补全：C 关键字 + 标准库函数（带签名与说明）
-  const completionProvider: monaco.languages.CompletionItemProvider = {
+  // 代码补全：关键字 + 标准库函数（带签名与说明）
+  const makeCompletion = (keywords: string[], docs: Record<string, CDocEntry>): monaco.languages.CompletionItemProvider => ({
     provideCompletionItems(model, position) {
       const word = model.getWordUntilPosition(position);
       const range = new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn);
       const prefix = word.word.toLowerCase();
       const suggestions: monaco.languages.CompletionItem[] = [];
-      for (const kw of C_KEYWORDS) {
+      for (const kw of keywords) {
         if (kw.startsWith(prefix)) {
           suggestions.push({ label: kw, kind: monaco.languages.CompletionItemKind.Keyword, insertText: kw, range });
         }
       }
-      for (const [name, d] of Object.entries(DOCS)) {
+      for (const [name, d] of Object.entries(docs)) {
         if (name.startsWith(prefix)) {
           suggestions.push({
             label: name,
@@ -326,14 +471,21 @@ export function registerCDocs(): void {
       }
       return { suggestions };
     },
-  };
+  });
 
-  for (const lang of ['c', 'cpp']) {
-    monaco.languages.registerHoverProvider(lang, hoverProvider);
-    monaco.languages.registerDefinitionProvider(lang, definitionProvider);
-    monaco.languages.registerDefinitionProvider(lang, headerProvider);
-    monaco.languages.registerCompletionItemProvider(lang, completionProvider);
-  }
+  const cDocs = DOCS;
+  const cppDocs = { ...DOCS, ...CXX_DOCS };
+  const cKeywords = C_KEYWORDS;
+  const cppKeywords = [...C_KEYWORDS, ...CXX_KEYWORDS];
+
+  monaco.languages.registerHoverProvider('c', makeHover(cDocs));
+  monaco.languages.registerHoverProvider('cpp', makeHover(cppDocs));
+  monaco.languages.registerDefinitionProvider('c', makeDefinition(cDocs));
+  monaco.languages.registerDefinitionProvider('cpp', makeDefinition(cppDocs));
+  monaco.languages.registerDefinitionProvider('c', headerProvider);
+  monaco.languages.registerDefinitionProvider('cpp', headerProvider);
+  monaco.languages.registerCompletionItemProvider('c', makeCompletion(cKeywords, cDocs));
+  monaco.languages.registerCompletionItemProvider('cpp', makeCompletion(cppKeywords, cppDocs));
 
   // Ctrl+点击（跳转到定义）时，拦截自定义的 wonder-doc / wonder-header 地址，
   // 通过事件通知 React 打开应用内文档面板或头文件（不再跳系统浏览器）。

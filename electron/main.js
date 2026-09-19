@@ -23,6 +23,48 @@ let termSession = null;
 let allowClose = false;
 const aiAborts = new Map();
 
+// 在目录树里递归找文件（按名字），用于定位 C++ 标准头文件（位于 lib/gcc/*/*/include/c++ 下）。
+function findFileRecursive(dir, name, depth) {
+  if (depth <= 0) return null;
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  for (const e of entries) {
+    const full = path.join(dir, e.name);
+    if (e.isFile() && e.name === name) return full;
+    if (e.isDirectory()) {
+      const found = findFileRecursive(full, name, depth - 1);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// 收集 w64devkit 里所有 C++ 头文件根目录（lib/gcc/<target>/<ver>/include/c++）。
+function findCxxRoots(gccLibDir) {
+  const roots = [];
+  try {
+    for (const target of fs.readdirSync(gccLibDir)) {
+      const targetDir = path.join(gccLibDir, target);
+      if (!fs.statSync(targetDir).isDirectory()) continue;
+      for (const ver of fs.readdirSync(targetDir)) {
+        const inc = path.join(targetDir, ver, 'include', 'c++');
+        try {
+          if (fs.statSync(inc).isDirectory()) roots.push(inc);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return roots;
+}
+
 // ---------------------------------------------------------------------------
 // Custom scheme for the packaged renderer (same-origin so workers/fetch work).
 protocol.registerSchemesAsPrivileged([
@@ -260,15 +302,26 @@ function registerIpc() {
 
     let full = null;
     if (kind === 'sys') {
-      const incDirs = [];
       const gccBin = toolchain.bundledGccBin(app.getAppPath());
-      if (gccBin) incDirs.push(path.join(path.dirname(gccBin), '..', 'include'));
-      if (app.getAppPath()) incDirs.push(path.join(app.getAppPath(), 'vendor', 'w64devkit', 'include'));
-      for (const d of incDirs) {
-        const p = path.join(d, name);
-        if (fs.existsSync(p)) {
-          full = p;
-          break;
+      const w64root = gccBin ? path.join(path.dirname(gccBin), '..') : (app.getAppPath() ? path.join(app.getAppPath(), 'vendor', 'w64devkit') : null);
+      if (w64root) {
+        // 1) C / Windows 头文件：include/<name>
+        const direct = path.join(w64root, 'include', name);
+        try {
+          if (fs.statSync(direct).isFile()) full = direct;
+        } catch {
+          /* not found */
+        }
+        // 2) C++ 标准头文件：lib/gcc/**/include/c++ 下递归查找
+        if (!full) {
+          const gccLibDir = path.join(w64root, 'lib', 'gcc');
+          for (const cxxRoot of findCxxRoots(gccLibDir)) {
+            const found = findFileRecursive(cxxRoot, name, 5);
+            if (found) {
+              full = found;
+              break;
+            }
+          }
         }
       }
     } else if (settings.projectDir) {
