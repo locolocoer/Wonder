@@ -17,6 +17,7 @@ import { EditorPane } from './components/EditorPane';
 import { OutputPanel } from './components/OutputPanel';
 import { ChatPanel } from './components/ChatPanel';
 import { SettingsModal } from './components/SettingsModal';
+import { DocModal } from './components/DocModal';
 
 export default function App() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -37,6 +38,7 @@ export default function App() {
   const [starterAvailable, setStarterAvailable] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<'course' | 'files' | 'git'>('course');
   const [createPending, setCreatePending] = useState(false);
+  const [docName, setDocName] = useState<string | null>(null);
 
   // 面板尺寸（可拖拽调节，并持久化）
   const [chatWidth, setChatWidth] = useState<number>(() => {
@@ -124,6 +126,16 @@ export default function App() {
   useEffect(() => {
     if (settings) document.documentElement.dataset.theme = settings.theme === 'vs' ? 'light' : 'dark';
   }, [settings?.theme, settings]);
+
+  // Ctrl+点击 C 函数名 → 打开应用内文档面板
+  useEffect(() => {
+    const onDocOpen = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.name) setDocName(detail.name);
+    };
+    window.addEventListener('wonder-doc-open', onDocOpen);
+    return () => window.removeEventListener('wonder-doc-open', onDocOpen);
+  }, []);
 
   // ---- chat 历史持久化（防抖保存，重启后恢复） --------------------------
   useEffect(() => {
@@ -653,6 +665,7 @@ export default function App() {
           onDetect={detectToolchain}
         />
       )}
+      {docName && <DocModal name={docName} onClose={() => setDocName(null)} />}
     </div>
   );
 }

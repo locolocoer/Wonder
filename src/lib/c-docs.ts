@@ -3,10 +3,15 @@ import * as monaco from 'monaco-editor';
 // C 标准库常用函数的内置说明：悬浮显示用法，Ctrl+点击跳转到 cppreference 文档。
 // 说明文字面向初学者，避免一上来就查英文手册。
 
-interface CDocEntry {
+export interface CDocEntry {
   sig: string;
   desc: string;
   url: string;
+}
+
+/** 供应用内文档面板查询函数说明。 */
+export function getCDoc(name: string): CDocEntry | undefined {
+  return DOCS[name];
 }
 
 const DOCS: Record<string, CDocEntry> = {
@@ -248,7 +253,7 @@ export function registerCDocs(): void {
       return {
         range: new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn),
         contents: [
-          { value: `\`\`\`c\n${d.sig}\n\`\`\`\n\n${d.desc}\n\n*按住 Ctrl 点击可跳转到完整文档*` },
+          { value: `\`\`\`c\n${d.sig}\n\`\`\`\n\n${d.desc}\n\n*按住 Ctrl 点击可在应用内查看文档*` },
         ],
       };
     },
@@ -261,7 +266,7 @@ export function registerCDocs(): void {
       const d = DOCS[word.word];
       if (!d) return null;
       return {
-        uri: monaco.Uri.parse(d.url),
+        uri: monaco.Uri.from({ scheme: 'wonder-doc', path: '/' + word.word }),
         range: new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn),
       };
     },
@@ -272,11 +277,13 @@ export function registerCDocs(): void {
     monaco.languages.registerDefinitionProvider(lang, definitionProvider);
   }
 
-  // Ctrl+点击（跳转到定义）时，拦截 https 文档地址，改用系统浏览器打开。
+  // Ctrl+点击（跳转到定义）时，拦截自定义的 wonder-doc 地址，
+  // 通过事件通知 React 打开应用内文档面板（不再跳系统浏览器）。
   monaco.editor.registerEditorOpener({
     openCodeEditor(_source, resource) {
-      if (resource && /^https?:/i.test(resource.toString())) {
-        window.api.openExternal(resource.toString());
+      if (resource && resource.scheme === 'wonder-doc') {
+        const name = decodeURIComponent(resource.path.replace(/^\//, ''));
+        window.dispatchEvent(new CustomEvent('wonder-doc-open', { detail: { name } }));
         return true;
       }
       return false;

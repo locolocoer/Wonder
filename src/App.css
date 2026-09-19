@@ -866,6 +866,40 @@ body.resizing .center {
   margin-top: 18px;
 }
 
+.doc-modal .doc-fn-name {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.doc-modal .doc-sig {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 10px;
+  color: var(--yellow);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.doc-modal .doc-desc {
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg);
+}
+
+.doc-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .toolchain-row {
   display: flex;
   gap: 8px;
