@@ -134,6 +134,23 @@ export default function App() {
     return () => clearTimeout(t);
   }, [messages]);
 
+  // ---- 自动保存：内容变更后 1.5 秒静默写盘，无需手动 Ctrl+S -------------
+  useEffect(() => {
+    const dirtyTabs = tabs.filter((t) => t.dirty);
+    if (!dirtyTabs.length) return;
+    const timer = setTimeout(async () => {
+      for (const t of dirtyTabs) {
+        const content = t.content;
+        const r = await window.api.projectWrite(t.path, content);
+        if (r.ok) {
+          // 仅当磁盘内容与本次写入一致时才清除 dirty，避免覆盖用户更新的输入
+          setTabs((prev) => prev.map((x) => (x.path === t.path && x.content === content ? { ...x, dirty: false } : x)));
+        }
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [tabs]);
+
   const clearChat = () => {
     setMessages([]);
     window.api.chatClear();
