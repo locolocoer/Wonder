@@ -112,6 +112,31 @@ function registerIpc() {
     return { ok: true };
   });
 
+  ipcMain.handle('chat:load', () => {
+    try {
+      const arr = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'chat.json'), 'utf8'));
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  });
+  ipcMain.handle('chat:save', (_e, messages) => {
+    try {
+      fs.writeFileSync(path.join(app.getPath('userData'), 'chat.json'), JSON.stringify(messages), 'utf8');
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+  ipcMain.handle('chat:clear', () => {
+    try {
+      fs.rmSync(path.join(app.getPath('userData'), 'chat.json'), { force: true });
+      return { ok: true };
+    } catch {
+      return { ok: true };
+    }
+  });
+
   ipcMain.handle('app:get-boot', () => {
     return {
       version: app.getVersion(),

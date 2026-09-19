@@ -147,6 +147,9 @@ declare global {
       termReset(): Promise<{ ok: boolean }>;
       updateCheck(): Promise<{ ok: boolean }>;
       updateInstall(): Promise<{ ok: boolean }>;
+      chatLoad(): Promise<ChatMessage[]>;
+      chatSave(messages: ChatMessage[]): Promise<{ ok: boolean; error?: string }>;
+      chatClear(): Promise<{ ok: boolean }>;
       winMinimize(): Promise<{ ok: boolean }>;
       winToggleMaximize(): Promise<{ ok: boolean }>;
       winClose(): Promise<{ ok: boolean }>;

@@ -25,6 +25,10 @@ contextBridge.exposeInMainWorld('api', {
   updateCheck: () => ipcRenderer.invoke('update:check'),
   updateInstall: () => ipcRenderer.invoke('update:install'),
 
+  chatLoad: () => ipcRenderer.invoke('chat:load'),
+  chatSave: (messages) => ipcRenderer.invoke('chat:save', messages),
+  chatClear: () => ipcRenderer.invoke('chat:clear'),
+
   winMinimize: () => ipcRenderer.invoke('win:minimize'),
   winToggleMaximize: () => ipcRenderer.invoke('win:toggle-maximize'),
   winClose: () => ipcRenderer.invoke('win:close'),

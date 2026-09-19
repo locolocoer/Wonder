@@ -103,9 +103,29 @@ export default function App() {
       setCurrentStageId(sid);
       setCompletedIds(new Set(done));
       if (b.settings.projectDir) await loadFiles();
+      try {
+        const msgs = await window.api.chatLoad();
+        if (Array.isArray(msgs) && msgs.length) setMessages(msgs.map((m) => ({ ...m, streaming: false })));
+      } catch {
+        /* ignore */
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ---- chat 历史持久化（防抖保存，重启后恢复） --------------------------
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const t = setTimeout(() => {
+      window.api.chatSave(messages.map((m) => ({ ...m, streaming: false })));
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [messages]);
+
+  const clearChat = () => {
+    setMessages([]);
+    window.api.chatClear();
+  };
 
   // ---- IPC events ---------------------------------------------------------
   useEffect(() => {
@@ -410,6 +430,7 @@ export default function App() {
           onSend={sendChat}
           onAbort={abortChat}
           onOpenSettings={() => setShowSettings(true)}
+          onClearChat={clearChat}
         />
       </div>
       {showSettings && (

@@ -11,6 +11,7 @@ export function ChatPanel({
   onSend,
   onAbort,
   onOpenSettings,
+  onClearChat,
 }: {
   style?: React.CSSProperties;
   messages: ChatMessage[];
@@ -19,6 +20,7 @@ export function ChatPanel({
   onSend: (mode: AiMode, text?: string) => void;
   onAbort: () => void;
   onOpenSettings: () => void;
+  onClearChat: () => void;
 }) {
   const [text, setText] = useState('');
   const bottomRef = React.useRef<HTMLDivElement>(null);
@@ -37,6 +39,16 @@ export function ChatPanel({
     <div className="chat" style={style}>
       <div className="panel-title">
         <span>AI 老师</span>
+        {messages.length > 0 && (
+          <button
+            className="btn"
+            onClick={() => {
+              if (window.confirm('清空与导师的全部对话历史？')) onClearChat();
+            }}
+          >
+            清空对话
+          </button>
+        )}
         {!hasApiKey && (
           <button className="btn" onClick={onOpenSettings}>
             配置 API Key
