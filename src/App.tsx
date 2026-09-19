@@ -210,12 +210,20 @@ export default function App() {
     [tabs]
   );
 
-  const onChange = useCallback(
-    (content: string) => {
-      setTabs((prev) => prev.map((t) => (t.path === activePath ? { ...t, content, dirty: true } : t)));
-    },
-    [activePath]
-  );
+  // 始终用 ref 取「当前」标签，避免 Monaco 组件里残留的旧 onChange 闭包把内容写进错误的标签。
+  const activePathRef = useRef(activePath);
+  activePathRef.current = activePath;
+
+  const onChange = useCallback((content: string) => {
+    const path = activePathRef.current;
+    setTabs((prev) =>
+      prev.map((t) => {
+        if (t.path !== path || t.readOnly) return t; // 只读标签（头文件/参考答案）永不落盘、永不标脏
+        if (t.content === content) return t; // 内容未变不标脏
+        return { ...t, content, dirty: true };
+      })
+    );
+  }, []);
 
   const saveAll = useCallback(async () => {
     let failed = 0;
