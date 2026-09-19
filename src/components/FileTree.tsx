@@ -56,6 +56,7 @@ export function FileTree({
   const [newName, setNewName] = useState('');
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const tree = useMemo(() => buildTree(files), [files]);
 
   // 外部（快捷键 Ctrl+N）请求新建文件时，打开新建输入框
@@ -75,10 +76,23 @@ export function FileTree({
     });
   };
 
+  // 新建的基准目录：选中的目录 → 该目录；选中的文件 → 其父目录；未选中 → 工程根目录
+  const createBase = () => {
+    if (!selectedPath) return '';
+    const f = files.find((x) => x.path === selectedPath);
+    if (!f) return '';
+    if (f.type === 'dir') return f.path;
+    const idx = f.path.lastIndexOf('/');
+    return idx >= 0 ? f.path.slice(0, idx) : '';
+  };
+
   const confirmCreate = () => {
     const name = newName.trim();
     if (!name) return;
-    onCreate(name, creating === 'dir' ? 'dir' : 'file');
+    const base = createBase();
+    const path = base ? `${base}/${name}` : name;
+    onCreate(path, creating === 'dir' ? 'dir' : 'file');
+    if (base) setExpanded((prev) => new Set(prev).add(base));
     setCreating(false);
     setNewName('');
   };
@@ -108,11 +122,19 @@ export function FileTree({
     return (
       <React.Fragment key={node.path}>
         <div
-          className="file-row"
+          className={`file-row ${selectedPath === node.path ? 'selected' : ''}`}
           style={{ paddingLeft: 8 + depth * 14 }}
           title={node.path}
+          onClick={() => setSelectedPath(node.path)}
         >
-          <span className="file-toggle" onClick={() => isDir && toggle(node.path)}>
+          <span
+            className="file-toggle"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isDir) toggle(node.path);
+              setSelectedPath(node.path);
+            }}
+          >
             {isDir ? (isOpen ? '▾' : '▸') : ''}
           </span>
           {isRenaming ? (
@@ -131,7 +153,12 @@ export function FileTree({
           ) : (
             <span
               className={`file-name ${isDir ? 'dir' : ''} ${activePath === node.path ? 'active' : ''}`}
-              onClick={() => (isDir ? toggle(node.path) : onOpen(node.path))}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedPath(node.path);
+                if (isDir) toggle(node.path);
+                else onOpen(node.path);
+              }}
             >
               {isDir ? '📁 ' : '📄 '}
               {node.name}
@@ -201,7 +228,11 @@ export function FileTree({
           </button>
         </div>
       )}
-      {creating && <div className="create-hint">可输入带路径的名称，如 src/lexer.c（会建到对应子目录）</div>}
+      {creating && (
+        <div className="create-hint">
+          将创建到：<span className="create-base">{createBase() || '工程根目录'}</span>（也可直接输入 src/lexer.c 建到子目录）
+        </div>
+      )}
       <div className="file-list">{tree.map((n) => renderNode(n, 0))}</div>
     </div>
   );

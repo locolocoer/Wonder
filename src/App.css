@@ -1117,6 +1117,11 @@ body.resizing .center {
   background: var(--bg-4);
 }
 
+.file-row.selected {
+  background: var(--bg-4);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
 .file-toggle {
   width: 12px;
   color: var(--fg-dim);
@@ -1186,6 +1191,11 @@ body.resizing .center {
   padding: 2px 8px 6px;
   font-size: 11px;
   color: var(--fg-dim);
+}
+
+.create-hint .create-base {
+  color: var(--accent);
+  font-family: var(--font-mono);
 }
 
 /* ---------- Git panel ---------- */
