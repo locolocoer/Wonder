@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import type { FileTab } from '../types';
 
@@ -25,6 +25,29 @@ export function EditorPane({
   // 用 ref 保存最新引用，确保 Ctrl+S 永远保存「当前」激活的标签。
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+
+  // 稳定 onChange 引用，避免每次渲染都让 Monaco 重新注册内容监听器（导致卡顿）。
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const handleChange = useCallback((v: string | undefined) => onChangeRef.current(v || ''), []);
+
+  // 稳定 options 引用（仅随 readOnly 变化），减少 updateOptions 的调用。
+  const editorOptions = useMemo(
+    () => ({
+      fontSize: 14,
+      minimap: { enabled: true },
+      automaticLayout: true,
+      scrollBeyondLastLine: false,
+      wordWrap: 'off' as const,
+      tabSize: 4,
+      renderWhitespace: 'none' as const,
+      smoothScrolling: true,
+      readOnly: Boolean(active?.readOnly),
+      quickSuggestions: true,
+      suggestOnTriggerCharacters: true,
+    }),
+    [active?.readOnly]
+  );
 
   // 给每个标签一个唯一 URI，让 Monaco 为每个标签使用独立 model，
   // 避免共用 model 导致「打开头文件时 main.c 内容被串改」。
@@ -72,23 +95,11 @@ export function EditorPane({
             language={langFor(active.name)}
             theme={theme}
             value={active.content}
-            onChange={(v) => onChange(v || '')}
+            onChange={handleChange}
             onMount={(editor, monaco) => {
               editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onSaveRef.current());
             }}
-            options={{
-              fontSize: 14,
-              minimap: { enabled: true },
-              automaticLayout: true,
-              scrollBeyondLastLine: false,
-              wordWrap: 'off',
-              tabSize: 4,
-              renderWhitespace: 'none',
-              smoothScrolling: true,
-              readOnly: Boolean(active.readOnly),
-              quickSuggestions: true,
-              suggestOnTriggerCharacters: true,
-            }}
+            options={editorOptions}
           />
         ) : (
           <div className="empty-editor">

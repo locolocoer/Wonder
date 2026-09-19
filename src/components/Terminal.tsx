@@ -23,7 +23,7 @@ function saveHistory(h: string[]) {
   }
 }
 
-export function Terminal({ initialCwd }: { initialCwd: string }) {
+export const Terminal = React.memo(function Terminal({ initialCwd }: { initialCwd: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
   const cwdRef = useRef(initialCwd || 'C:\\');
@@ -276,4 +276,4 @@ export function Terminal({ initialCwd }: { initialCwd: string }) {
   }, [initialCwd]);
 
   return <div className="terminal-xterm" ref={hostRef} />;
-}
+});
