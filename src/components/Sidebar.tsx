@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Stage, ProjectFile } from '../types';
+import { PROJECT_INTRO } from '../lib/curriculum';
 import { FileTree } from './FileTree';
 import { GitPanel } from './GitPanel';
 
@@ -59,6 +60,14 @@ export function Sidebar({
       </div>
       {tab === 'course' ? (
         <div className="roadmap">
+          <div className="project-intro">
+            <div className="project-intro-title">📖 新手必读</div>
+            <ul>
+              {PROJECT_INTRO.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </div>
           {stages.map((s) => {
             const done = completedIds.has(s.id);
             const active = s.id === currentStageId;
@@ -87,6 +96,26 @@ export function Sidebar({
                         <li key={i}>{g}</li>
                       ))}
                     </ul>
+                    {s.files && s.files.length > 0 && (
+                      <>
+                        <h4>需要修改的文件</h4>
+                        <ul className="stage-files">
+                          {s.files.map((f, i) => (
+                            <li key={i}>{f}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {s.background && s.background.length > 0 && (
+                      <>
+                        <h4>基础知识</h4>
+                        <ul className="stage-background">
+                          {s.background.map((b, i) => (
+                            <li key={i}>{b}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                     <h4>接口契约</h4>
                     <div className="contract">{s.contract}</div>
                     <h4>验收标准</h4>

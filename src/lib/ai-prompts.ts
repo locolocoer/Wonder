@@ -48,13 +48,20 @@ function truncate(text: string, max: number): string {
 
 function stageBlock(stage: Stage | undefined): string {
   if (!stage) return '（当前无选中阶段）';
-  return [
+  const parts: string[] = [
     `阶段 ${stage.num}：${stage.title}`,
     `简介：${stage.summary}`,
     `目标：\n${stage.goals.map((g) => `- ${g}`).join('\n')}`,
-    `接口契约：\n${stage.contract}`,
-    `验收标准：\n${stage.acceptance.map((a) => `- ${a}`).join('\n')}`,
-  ].join('\n');
+  ];
+  if (stage.files && stage.files.length) {
+    parts.push(`需要修改的文件：\n${stage.files.map((f) => `- ${f}`).join('\n')}`);
+  }
+  if (stage.background && stage.background.length) {
+    parts.push(`基础知识（面向小白）：\n${stage.background.map((b) => `- ${b}`).join('\n')}`);
+  }
+  parts.push(`接口契约：\n${stage.contract}`);
+  parts.push(`验收标准：\n${stage.acceptance.map((a) => `- ${a}`).join('\n')}`);
+  return parts.join('\n');
 }
 
 export interface ProjectContext {

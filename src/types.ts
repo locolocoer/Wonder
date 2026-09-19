@@ -59,6 +59,10 @@ export interface Stage {
   num: number;
   title: string;
   summary: string;
+  /** 面向小白的基础知识补充（本阶段需要用到的概念，逐条解释） */
+  background?: string[];
+  /** 本阶段需要修改/创建的文件 */
+  files?: string[];
   goals: string[];
   hints: string[];
   contract: string;
