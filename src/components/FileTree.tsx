@@ -35,6 +35,9 @@ export function FileTree({
   activePath,
   createPending,
   onCreateConsumed,
+  contextPaths,
+  onToggleContext,
+  onClearContext,
   onOpen,
   onCreate,
   onDelete,
@@ -45,6 +48,9 @@ export function FileTree({
   activePath: string;
   createPending: boolean;
   onCreateConsumed: () => void;
+  contextPaths: string[];
+  onToggleContext: (path: string) => void;
+  onClearContext: () => void;
   onOpen: (path: string) => void;
   onCreate: (path: string, kind: 'file' | 'dir') => void;
   onDelete: (path: string) => void;
@@ -166,6 +172,16 @@ export function FileTree({
           )}
           <span className="file-row-actions">
             <span
+              className={`file-context ${contextPaths.includes(node.path) ? 'on' : ''}`}
+              title={contextPaths.includes(node.path) ? '移出 AI 上下文' : '加入 AI 上下文（手动选择后只带入选中的文件）'}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleContext(node.path);
+              }}
+            >
+              📌
+            </span>
+            <span
               className="file-op"
               title="重命名"
               onClick={() => {
@@ -207,6 +223,14 @@ export function FileTree({
           ⟳
         </button>
       </div>
+      {contextPaths.length > 0 && (
+        <div className="context-hint">
+          <span>📌 已选 {contextPaths.length} 项作为 AI 上下文</span>
+          <button className="btn" onClick={onClearContext} title="恢复为自动（全部源码）">
+            清除
+          </button>
+        </div>
+      )}
       {creating && (
         <div className="create-row">
           <input

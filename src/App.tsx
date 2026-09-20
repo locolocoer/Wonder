@@ -39,6 +39,14 @@ export default function App() {
   const [sidebarTab, setSidebarTab] = useState<'course' | 'files' | 'git'>('course');
   const [createPending, setCreatePending] = useState(false);
   const [docName, setDocName] = useState<string | null>(null);
+  const [contextPaths, setContextPaths] = useState<string[]>(() => {
+    try {
+      const arr = JSON.parse(localStorage.getItem('cc-context') || '[]');
+      return Array.isArray(arr) ? arr : [];
+    } catch {
+      return [];
+    }
+  });
 
   // 面板尺寸（可拖拽调节，并持久化）
   const [chatWidth, setChatWidth] = useState<number>(() => {
@@ -446,6 +454,20 @@ export default function App() {
     });
   };
 
+  // ---- AI 上下文选择 ------------------------------------------------------
+  const toggleContext = useCallback((path: string) => {
+    setContextPaths((prev) => {
+      const next = prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path];
+      localStorage.setItem('cc-context', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const clearContext = useCallback(() => {
+    setContextPaths([]);
+    localStorage.setItem('cc-context', '[]');
+  }, []);
+
   // ---- build / test -------------------------------------------------------
   const recordStagePass = (id: string) => {
     try {
@@ -520,7 +542,12 @@ export default function App() {
   const collectProjectContext = useCallback(async (): Promise<ProjectContext> => {
     const tree = files.map((f) => f.path).sort();
     const contents: Record<string, string> = {};
+    const isSelected = (f: ProjectFile) =>
+      contextPaths.some((p) => f.path === p || f.path.startsWith(p + '/'));
     const includeContent = (f: ProjectFile) => {
+      // 手动选择模式：只带入选中的文件/目录
+      if (contextPaths.length > 0) return isSelected(f);
+      // 自动模式：源码 + 构建脚本 + 文档
       if (f.path.startsWith('reference/') || f.path.startsWith('tests/') || f.path.startsWith('.trainer-tests/')) return false;
       const name = f.name.toLowerCase();
       return /\.(c|h|cpp|cc|cxx|hpp)$/.test(f.name) || name === 'makefile' || /\.(bat|sh)$/.test(f.name) || /\.(md|txt)$/.test(f.name);
@@ -531,7 +558,7 @@ export default function App() {
       if (r.ok && r.content != null && r.content.length < 200000) contents[f.path] = r.content;
     }
     return { tree, contents };
-  }, [files]);
+  }, [files, contextPaths]);
 
   const sendChat = useCallback(async (mode: AiMode, text?: string) => {
     if (!settings) return;
@@ -647,6 +674,9 @@ export default function App() {
           onTabChange={setSidebarTab}
           createPending={createPending}
           onCreateConsumed={() => setCreatePending(false)}
+          contextPaths={contextPaths}
+          onToggleContext={toggleContext}
+          onClearContext={clearContext}
           onSelectStage={selectStage}
           onToggleDone={toggleDone}
           onOpenFile={openFile}

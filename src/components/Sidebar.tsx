@@ -17,6 +17,9 @@ export function Sidebar({
   onTabChange,
   createPending,
   onCreateConsumed,
+  contextPaths,
+  onToggleContext,
+  onClearContext,
   onSelectStage,
   onToggleDone,
   onOpenFile,
@@ -38,6 +41,9 @@ export function Sidebar({
   onTabChange: (tab: 'course' | 'files' | 'git') => void;
   createPending: boolean;
   onCreateConsumed: () => void;
+  contextPaths: string[];
+  onToggleContext: (path: string) => void;
+  onClearContext: () => void;
   onSelectStage: (id: string) => void;
   onToggleDone: (id: string) => void;
   onOpenFile: (path: string) => void;
@@ -153,6 +159,9 @@ export function Sidebar({
           activePath={activePath}
           createPending={createPending}
           onCreateConsumed={onCreateConsumed}
+          contextPaths={contextPaths}
+          onToggleContext={onToggleContext}
+          onClearContext={onClearContext}
           onOpen={onOpenFile}
           onCreate={onCreateFile}
           onDelete={onDeleteFile}

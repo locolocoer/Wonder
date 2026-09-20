@@ -1177,6 +1177,41 @@ body.resizing .center {
   visibility: visible;
 }
 
+.file-context {
+  color: var(--fg-dim);
+  cursor: pointer;
+  font-size: 11px;
+  visibility: hidden;
+  padding: 0 3px;
+  opacity: 0.4;
+}
+
+.file-context.on {
+  visibility: visible;
+  opacity: 1;
+  color: var(--accent);
+}
+
+.file-row:hover .file-context {
+  visibility: visible;
+}
+
+.context-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--yellow);
+  border-bottom: 1px solid var(--border);
+}
+
+.context-hint .btn {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
 .file-op:hover {
   color: var(--accent);
 }
