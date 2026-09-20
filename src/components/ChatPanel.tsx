@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import type { ChatMessage, ProjectFile } from '../types';
 import { MODE_LABELS, type AiMode } from '../lib/ai-prompts';
-import { buildTree, type TreeNode } from '../lib/file-tree';
+import { buildTree, isPathSelected, type TreeNode } from '../lib/file-tree';
 import { Markdown } from './Markdown';
 
 export const ChatPanel = React.memo(function ChatPanel({
@@ -62,8 +62,9 @@ export const ChatPanel = React.memo(function ChatPanel({
   };
 
   const handleToggle = (node: TreeNode) => {
+    const wasSelected = isPathSelected(node.path, contextPaths);
     onToggleContext(node.path);
-    if (node.type === 'dir' && !contextPaths.includes(node.path)) {
+    if (node.type === 'dir' && !wasSelected) {
       setExpanded((prev) => new Set(prev).add(node.path));
     }
   };
@@ -71,12 +72,12 @@ export const ChatPanel = React.memo(function ChatPanel({
   const renderTreeNode = (node: TreeNode, depth: number): React.ReactNode => {
     const isDir = node.type === 'dir';
     const isOpen = expanded.has(node.path);
-    const checked = contextPaths.includes(node.path);
+    const checked = isPathSelected(node.path, contextPaths);
     return (
       <React.Fragment key={node.path}>
         <div
           className={`context-item ${isDir ? 'dir' : ''} ${checked ? 'checked' : ''}`}
-          style={{ paddingLeft: 8 + depth * 14 }}
+          style={{ paddingLeft: 6 + depth * 14 }}
           title={node.path}
         >
           <span
@@ -85,10 +86,13 @@ export const ChatPanel = React.memo(function ChatPanel({
           >
             {isDir ? (isOpen ? '▾' : '▸') : ''}
           </span>
-          <label className="context-label">
-            <input type="checkbox" checked={checked} onChange={() => handleToggle(node)} />
-            <span className="context-name">{isDir ? '📁' : '📄'} {node.name}</span>
-          </label>
+          <input type="checkbox" checked={checked} onChange={() => handleToggle(node)} />
+          <span
+            className="context-name"
+            onClick={() => (isDir ? toggleExpand(node.path) : onToggleContext(node.path))}
+          >
+            {isDir ? '📁' : '📄'} {node.name}
+          </span>
         </div>
         {isDir && isOpen && node.children.map((c) => renderTreeNode(c, depth + 1))}
       </React.Fragment>
@@ -205,7 +209,7 @@ export const ChatPanel = React.memo(function ChatPanel({
                 <div className="context-popover-list">
                   {filter.trim() ? (
                     filtered.map((f) => {
-                      const checked = contextPaths.includes(f.path);
+                      const checked = isPathSelected(f.path, contextPaths);
                       return (
                         <div
                           key={f.path}
@@ -213,10 +217,11 @@ export const ChatPanel = React.memo(function ChatPanel({
                           style={{ paddingLeft: 6 + depth(f.path) * 12 }}
                           title={f.path}
                         >
-                          <label className="context-label">
-                            <input type="checkbox" checked={checked} onChange={() => onToggleContext(f.path)} />
-                            <span className="context-name">{f.type === 'dir' ? '📁' : '📄'} {f.name}</span>
-                          </label>
+                          <span className="context-toggle" />
+                          <input type="checkbox" checked={checked} onChange={() => onToggleContext(f.path)} />
+                          <span className="context-name" onClick={() => onToggleContext(f.path)}>
+                            {f.type === 'dir' ? '📁' : '📄'} {f.name}
+                          </span>
                         </div>
                       );
                     })
