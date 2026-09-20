@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import type { ChatMessage } from '../types';
+import React, { useMemo, useState } from 'react';
+import type { ChatMessage, ProjectFile } from '../types';
 import { MODE_LABELS, type AiMode } from '../lib/ai-prompts';
 import { Markdown } from './Markdown';
 
@@ -8,6 +8,10 @@ export const ChatPanel = React.memo(function ChatPanel({
   messages,
   streaming,
   hasApiKey,
+  files,
+  contextPaths,
+  onToggleContext,
+  onClearContext,
   onSend,
   onAbort,
   onOpenSettings,
@@ -17,13 +21,25 @@ export const ChatPanel = React.memo(function ChatPanel({
   messages: ChatMessage[];
   streaming: boolean;
   hasApiKey: boolean;
+  files: ProjectFile[];
+  contextPaths: string[];
+  onToggleContext: (path: string) => void;
+  onClearContext: () => void;
   onSend: (mode: AiMode, text?: string) => void;
   onAbort: () => void;
   onOpenSettings: () => void;
   onClearChat: () => void;
 }) {
   const [text, setText] = useState('');
+  const [showContext, setShowContext] = useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+
+  const sortedFiles = useMemo(() => {
+    return [...files].sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+      return a.path.localeCompare(b.path);
+    });
+  }, [files]);
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -35,10 +51,19 @@ export const ChatPanel = React.memo(function ChatPanel({
     setText('');
   };
 
+  const depth = (p: string) => p.split('/').length - 1;
+
   return (
     <div className="chat" style={style}>
       <div className="panel-title">
         <span>AI 老师</span>
+        <button
+          className={`btn ${contextPaths.length > 0 ? 'primary' : ''}`}
+          onClick={() => setShowContext((v) => !v)}
+          title="选择哪些文件/目录作为 AI 上下文"
+        >
+          📌 上下文{contextPaths.length > 0 ? `（${contextPaths.length}）` : ''}
+        </button>
         {messages.length > 0 && (
           <button
             className="btn"
@@ -55,6 +80,41 @@ export const ChatPanel = React.memo(function ChatPanel({
           </button>
         )}
       </div>
+
+      {showContext && (
+        <div className="context-panel">
+          <div className="context-panel-head">
+            <span>选择 AI 上下文（未选=自动带全部源码）</span>
+            {contextPaths.length > 0 && (
+              <button className="btn" onClick={onClearContext} title="恢复自动模式">
+                清除选择
+              </button>
+            )}
+          </div>
+          <div className="context-panel-list">
+            {sortedFiles.map((f) => {
+              const checked = contextPaths.includes(f.path);
+              return (
+                <label
+                  key={f.path}
+                  className={`context-item ${f.type === 'dir' ? 'dir' : ''}`}
+                  style={{ paddingLeft: 6 + depth(f.path) * 12 }}
+                  title={f.path}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => onToggleContext(f.path)}
+                  />
+                  <span>{f.type === 'dir' ? '📁' : '📄'} {f.name}</span>
+                </label>
+              );
+            })}
+            {sortedFiles.length === 0 && <div className="log-line info">工程里还没有文件。</div>}
+          </div>
+        </div>
+      )}
+
       <div className="chat-messages">
         {messages.length === 0 && (
           <div className="msg assistant">

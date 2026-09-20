@@ -674,9 +674,6 @@ export default function App() {
           onTabChange={setSidebarTab}
           createPending={createPending}
           onCreateConsumed={() => setCreatePending(false)}
-          contextPaths={contextPaths}
-          onToggleContext={toggleContext}
-          onClearContext={clearContext}
           onSelectStage={selectStage}
           onToggleDone={toggleDone}
           onOpenFile={openFile}
@@ -719,6 +716,10 @@ export default function App() {
           messages={messages}
           streaming={streaming}
           hasApiKey={Boolean(settings.apiKey)}
+          files={files}
+          contextPaths={contextPaths}
+          onToggleContext={toggleContext}
+          onClearContext={clearContext}
           onSend={sendChat}
           onAbort={abortChat}
           onOpenSettings={openSettings}
