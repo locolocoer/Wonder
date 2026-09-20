@@ -1177,34 +1177,109 @@ body.resizing .center {
   visibility: visible;
 }
 
-.context-panel {
-  flex: 0 0 auto;
-  max-height: 260px;
+.context-chips {
   display: flex;
-  flex-direction: column;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-2);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 0;
+  font-size: 12px;
 }
 
-.context-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 6px 10px;
-  font-size: 11.5px;
+.context-chips-label {
   color: var(--fg-dim);
 }
 
-.context-panel-head .btn {
-  font-size: 11px;
-  padding: 2px 8px;
+.context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 8px;
+  background: var(--bg-4);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--fg);
+  font-size: 11.5px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.context-panel-list {
+.context-chip button {
+  border: none;
+  background: transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.context-chip button:hover {
+  color: var(--red);
+}
+
+.context-clear {
+  font-size: 11px;
+  padding: 1px 8px;
+}
+
+.context-wrap {
+  position: relative;
+  margin-left: auto;
+}
+
+.context-popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  width: 300px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.context-popover-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.context-popover-head input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--fg);
+  font-size: 12.5px;
+}
+
+.context-popover-head input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.context-popover-list {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 2px 8px 8px;
+  padding: 4px 6px;
+}
+
+.context-popover-foot {
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  text-align: right;
 }
 
 .context-item {
@@ -1218,6 +1293,7 @@ body.resizing .center {
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--fg);
+  border-radius: 4px;
 }
 
 .context-item:hover {
@@ -1227,6 +1303,10 @@ body.resizing .center {
 .context-item.dir {
   color: var(--yellow);
   font-weight: 600;
+}
+
+.context-item.checked {
+  color: var(--accent);
 }
 
 .context-item input {

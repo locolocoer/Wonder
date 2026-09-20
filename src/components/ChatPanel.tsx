@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import type { ChatMessage, ProjectFile } from '../types';
 import { MODE_LABELS, type AiMode } from '../lib/ai-prompts';
 import { Markdown } from './Markdown';
@@ -32,6 +32,7 @@ export const ChatPanel = React.memo(function ChatPanel({
 }) {
   const [text, setText] = useState('');
   const [showContext, setShowContext] = useState(false);
+  const [filter, setFilter] = useState('');
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
   const sortedFiles = useMemo(() => {
@@ -40,6 +41,12 @@ export const ChatPanel = React.memo(function ChatPanel({
       return a.path.localeCompare(b.path);
     });
   }, [files]);
+
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return sortedFiles;
+    return sortedFiles.filter((f) => f.path.toLowerCase().includes(q));
+  }, [sortedFiles, filter]);
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,18 +59,12 @@ export const ChatPanel = React.memo(function ChatPanel({
   };
 
   const depth = (p: string) => p.split('/').length - 1;
+  const basename = (p: string) => p.split('/').pop() || p;
 
   return (
     <div className="chat" style={style}>
       <div className="panel-title">
         <span>AI 老师</span>
-        <button
-          className={`btn ${contextPaths.length > 0 ? 'primary' : ''}`}
-          onClick={() => setShowContext((v) => !v)}
-          title="选择哪些文件/目录作为 AI 上下文"
-        >
-          📌 上下文{contextPaths.length > 0 ? `（${contextPaths.length}）` : ''}
-        </button>
         {messages.length > 0 && (
           <button
             className="btn"
@@ -80,40 +81,6 @@ export const ChatPanel = React.memo(function ChatPanel({
           </button>
         )}
       </div>
-
-      {showContext && (
-        <div className="context-panel">
-          <div className="context-panel-head">
-            <span>选择 AI 上下文（未选=自动带全部源码）</span>
-            {contextPaths.length > 0 && (
-              <button className="btn" onClick={onClearContext} title="恢复自动模式">
-                清除选择
-              </button>
-            )}
-          </div>
-          <div className="context-panel-list">
-            {sortedFiles.map((f) => {
-              const checked = contextPaths.includes(f.path);
-              return (
-                <label
-                  key={f.path}
-                  className={`context-item ${f.type === 'dir' ? 'dir' : ''}`}
-                  style={{ paddingLeft: 6 + depth(f.path) * 12 }}
-                  title={f.path}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => onToggleContext(f.path)}
-                  />
-                  <span>{f.type === 'dir' ? '📁' : '📄'} {f.name}</span>
-                </label>
-              );
-            })}
-            {sortedFiles.length === 0 && <div className="log-line info">工程里还没有文件。</div>}
-          </div>
-        </div>
-      )}
 
       <div className="chat-messages">
         {messages.length === 0 && (
@@ -140,7 +107,24 @@ export const ChatPanel = React.memo(function ChatPanel({
         ))}
         <div ref={bottomRef} />
       </div>
+
       <div className="chat-input-area">
+        {/* 已选择的上下文 chips */}
+        {contextPaths.length > 0 && (
+          <div className="context-chips">
+            <span className="context-chips-label">上下文：</span>
+            {contextPaths.map((p) => (
+              <span key={p} className="context-chip" title={p}>
+                {basename(p)}
+                <button onClick={() => onToggleContext(p)} title="移除">✕</button>
+              </span>
+            ))}
+            <button className="btn context-clear" onClick={onClearContext} title="恢复自动（全部源码）">
+              清除
+            </button>
+          </div>
+        )}
+
         <div className="quick-actions">
           <button className="btn" disabled={streaming} onClick={() => onSend('breakdown')}>
             🧩 拆分当前任务
@@ -151,7 +135,53 @@ export const ChatPanel = React.memo(function ChatPanel({
           <button className="btn" disabled={streaming} onClick={() => onSend('judge')}>
             🔍 评判我的代码
           </button>
+          <div className="context-wrap">
+            <button
+              className={`btn ${contextPaths.length > 0 ? 'primary' : ''}`}
+              onClick={() => setShowContext((v) => !v)}
+              title="选择文件/目录加入 AI 上下文"
+            >
+              📎 上下文
+            </button>
+            {showContext && (
+              <div className="context-popover">
+                <div className="context-popover-head">
+                  <input
+                    placeholder="搜索文件/目录…"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    autoFocus
+                    spellCheck={false}
+                  />
+                  <button className="btn" onClick={() => setShowContext(false)}>✕</button>
+                </div>
+                <div className="context-popover-list">
+                  {filtered.map((f) => {
+                    const checked = contextPaths.includes(f.path);
+                    return (
+                      <label
+                        key={f.path}
+                        className={`context-item ${f.type === 'dir' ? 'dir' : ''} ${checked ? 'checked' : ''}`}
+                        style={{ paddingLeft: 6 + depth(f.path) * 12 }}
+                        title={f.path}
+                      >
+                        <input type="checkbox" checked={checked} onChange={() => onToggleContext(f.path)} />
+                        <span>{f.type === 'dir' ? '📁' : '📄'} {f.name}</span>
+                      </label>
+                    );
+                  })}
+                  {filtered.length === 0 && <div className="log-line info">没有匹配的文件。</div>}
+                </div>
+                {contextPaths.length > 0 && (
+                  <div className="context-popover-foot">
+                    <button className="btn" onClick={onClearContext}>恢复自动（全部源码）</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
+
         <div className="chat-input-row">
           <textarea
             placeholder={hasApiKey ? '向 AI 老师提问…（Enter 发送，Shift+Enter 换行）' : '请先在设置里配置 DeepSeek API Key'}
