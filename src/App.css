@@ -1285,13 +1285,8 @@ body.resizing .center {
 .context-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 4px;
+  padding: 2px 4px;
   font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: var(--fg);
   border-radius: 4px;
 }
@@ -1305,14 +1300,38 @@ body.resizing .center {
   font-weight: 600;
 }
 
-.context-item.checked {
+.context-item.checked .context-name {
   color: var(--accent);
 }
 
-.context-item input {
+.context-toggle {
+  width: 14px;
+  flex: 0 0 auto;
+  color: var(--fg-dim);
+  cursor: pointer;
+  user-select: none;
+  text-align: center;
+}
+
+.context-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.context-label input {
   margin: 0;
   accent-color: var(--accent);
   flex: 0 0 auto;
+}
+
+.context-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-op:hover {

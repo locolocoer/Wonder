@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import type { ChatMessage, ProjectFile } from '../types';
 import { MODE_LABELS, type AiMode } from '../lib/ai-prompts';
+import { buildTree, type TreeNode } from '../lib/file-tree';
 import { Markdown } from './Markdown';
 
 export const ChatPanel = React.memo(function ChatPanel({
@@ -33,7 +34,10 @@ export const ChatPanel = React.memo(function ChatPanel({
   const [text, setText] = useState('');
   const [showContext, setShowContext] = useState(false);
   const [filter, setFilter] = useState('');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const bottomRef = React.useRef<HTMLDivElement>(null);
+
+  const tree = useMemo(() => buildTree(files), [files]);
 
   const sortedFiles = useMemo(() => {
     return [...files].sort((a, b) => {
@@ -47,6 +51,49 @@ export const ChatPanel = React.memo(function ChatPanel({
     if (!q) return sortedFiles;
     return sortedFiles.filter((f) => f.path.toLowerCase().includes(q));
   }, [sortedFiles, filter]);
+
+  const toggleExpand = (p: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p);
+      else next.add(p);
+      return next;
+    });
+  };
+
+  const handleToggle = (node: TreeNode) => {
+    onToggleContext(node.path);
+    if (node.type === 'dir' && !contextPaths.includes(node.path)) {
+      setExpanded((prev) => new Set(prev).add(node.path));
+    }
+  };
+
+  const renderTreeNode = (node: TreeNode, depth: number): React.ReactNode => {
+    const isDir = node.type === 'dir';
+    const isOpen = expanded.has(node.path);
+    const checked = contextPaths.includes(node.path);
+    return (
+      <React.Fragment key={node.path}>
+        <div
+          className={`context-item ${isDir ? 'dir' : ''} ${checked ? 'checked' : ''}`}
+          style={{ paddingLeft: 8 + depth * 14 }}
+          title={node.path}
+        >
+          <span
+            className="context-toggle"
+            onClick={() => isDir && toggleExpand(node.path)}
+          >
+            {isDir ? (isOpen ? '▾' : '▸') : ''}
+          </span>
+          <label className="context-label">
+            <input type="checkbox" checked={checked} onChange={() => handleToggle(node)} />
+            <span className="context-name">{isDir ? '📁' : '📄'} {node.name}</span>
+          </label>
+        </div>
+        {isDir && isOpen && node.children.map((c) => renderTreeNode(c, depth + 1))}
+      </React.Fragment>
+    );
+  };
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -156,21 +203,29 @@ export const ChatPanel = React.memo(function ChatPanel({
                   <button className="btn" onClick={() => setShowContext(false)}>✕</button>
                 </div>
                 <div className="context-popover-list">
-                  {filtered.map((f) => {
-                    const checked = contextPaths.includes(f.path);
-                    return (
-                      <label
-                        key={f.path}
-                        className={`context-item ${f.type === 'dir' ? 'dir' : ''} ${checked ? 'checked' : ''}`}
-                        style={{ paddingLeft: 6 + depth(f.path) * 12 }}
-                        title={f.path}
-                      >
-                        <input type="checkbox" checked={checked} onChange={() => onToggleContext(f.path)} />
-                        <span>{f.type === 'dir' ? '📁' : '📄'} {f.name}</span>
-                      </label>
-                    );
-                  })}
-                  {filtered.length === 0 && <div className="log-line info">没有匹配的文件。</div>}
+                  {filter.trim() ? (
+                    filtered.map((f) => {
+                      const checked = contextPaths.includes(f.path);
+                      return (
+                        <div
+                          key={f.path}
+                          className={`context-item ${f.type === 'dir' ? 'dir' : ''} ${checked ? 'checked' : ''}`}
+                          style={{ paddingLeft: 6 + depth(f.path) * 12 }}
+                          title={f.path}
+                        >
+                          <label className="context-label">
+                            <input type="checkbox" checked={checked} onChange={() => onToggleContext(f.path)} />
+                            <span className="context-name">{f.type === 'dir' ? '📁' : '📄'} {f.name}</span>
+                          </label>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    tree.map((n) => renderTreeNode(n, 0))
+                  )}
+                  {(filter.trim() ? filtered.length === 0 : tree.length === 0) && (
+                    <div className="log-line info">没有文件。</div>
+                  )}
                 </div>
                 {contextPaths.length > 0 && (
                   <div className="context-popover-foot">

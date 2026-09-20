@@ -1,34 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { ProjectFile } from '../types';
-
-interface TreeNode {
-  name: string;
-  path: string;
-  type: 'file' | 'dir';
-  children: TreeNode[];
-}
-
-function buildTree(files: ProjectFile[]): TreeNode[] {
-  const root: TreeNode = { name: '', path: '', type: 'dir', children: [] };
-  for (const f of files) {
-    const segs = f.path.split('/');
-    let node = root;
-    let acc = '';
-    for (let i = 0; i < segs.length; i++) {
-      const seg = segs[i];
-      acc = acc ? `${acc}/${seg}` : seg;
-      const isLast = i === segs.length - 1;
-      const type = isLast ? f.type : 'dir';
-      let child = node.children.find((c) => c.name === seg);
-      if (!child) {
-        child = { name: seg, path: acc, type: type as 'file' | 'dir', children: [] };
-        node.children.push(child);
-      }
-      node = child;
-    }
-  }
-  return root.children;
-}
+import { buildTree, type TreeNode } from '../lib/file-tree';
 
 export function FileTree({
   files,
