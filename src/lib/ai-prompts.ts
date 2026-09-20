@@ -102,8 +102,10 @@ function langFor(path: string): string {
 function filesBlock(contents: Record<string, string>): string {
   const entries = Object.entries(contents);
   if (!entries.length) return '（学生尚未编写任何源码文件）';
-  const totalBudget = 14000;
-  const per = Math.max(600, Math.floor(totalBudget / entries.length));
+  // 给足预算，确保 AI 能看到完整的源码文件（编译器源码通常每个几 KB）。
+  // DeepSeek 上下文有 64K token，这里用 ~90K 字符（约 30K token）仍留有余量。
+  const totalBudget = 90000;
+  const per = Math.max(16000, Math.floor(totalBudget / entries.length));
   return entries
     .map(([path, content]) => {
       const lang = langFor(path);
