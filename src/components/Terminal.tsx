@@ -195,7 +195,9 @@ export const Terminal = React.memo(function Terminal({ initialCwd }: { initialCw
       return true;
     });
 
-    const offData = window.api.onEvent('term:data', (text: string) => term.write(text));
+    // g++/cmd 输出的换行可能是纯 \n（LF），xterm 里 LF 只下移不回到行首，
+    // 会形成“阶梯状”错乱。统一把 \n 规范成 \r\n，保证每条错误信息正确换行。
+    const offData = window.api.onEvent('term:data', (text: string) => term.write(text.replace(/\r\n|\n/g, '\r\n')));
     const offExit = window.api.onEvent('term:exit', (info: { code: number; cwd: string }) => {
       busyRef.current = false;
       if (info && info.cwd) cwdRef.current = info.cwd;
