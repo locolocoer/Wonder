@@ -178,11 +178,21 @@ button {
   background: var(--bg-4);
   color: var(--fg);
   font-size: 12.5px;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .btn:hover {
   background: var(--btn-hover);
+  border-color: var(--fg-dim);
+}
+
+.btn:active {
+  background: var(--bg-3);
+}
+
+.btn:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .btn.primary {
@@ -287,6 +297,13 @@ body.resizing .center {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
+}
+
+.panel-title .btn {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
 }
 
 .roadmap {
@@ -314,6 +331,7 @@ body.resizing .center {
   border: none;
   color: var(--fg);
   text-align: left;
+  transition: background 0.15s;
 }
 
 .stage .stage-head:hover {
@@ -510,14 +528,30 @@ body.resizing .center {
   align-items: center;
   justify-content: center;
   color: var(--fg-dim);
-  gap: 14px;
+  gap: 10px;
   text-align: center;
   padding: 30px;
+  background:
+    radial-gradient(600px 300px at 50% 0%, rgba(79, 156, 249, 0.06), transparent),
+    var(--bg);
+}
+
+.empty-editor .logo {
+  font-size: 44px;
+  line-height: 1;
+  margin-bottom: 6px;
 }
 
 .empty-editor .big {
-  font-size: 22px;
+  font-size: 21px;
+  font-weight: 600;
   color: var(--fg);
+}
+
+.empty-editor .hint {
+  max-width: 460px;
+  line-height: 1.7;
+  font-size: 13px;
 }
 
 /* ---------- Output panel ---------- */
@@ -570,6 +604,11 @@ body.resizing .center {
   color: var(--fg-dim);
   font-size: 12.5px;
   cursor: pointer;
+  transition: color 0.15s;
+}
+
+.output-tab:hover {
+  color: var(--fg);
 }
 
 .output-tab.active {
@@ -1047,6 +1086,12 @@ body.resizing .center {
   color: var(--fg-dim);
   font-size: 13px;
   cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.sidebar-tab:hover {
+  color: var(--fg);
+  background: var(--bg-2);
 }
 
 .sidebar-tab.active {

@@ -104,9 +104,13 @@ export function EditorPane({
           />
         ) : (
           <div className="empty-editor">
-            <div className="big">开始实现你的 C 编译器</div>
-            <div>在左侧「文件」页签打开 src/ 下的源文件，或点顶部「初始化起始模板」生成骨架。</div>
-            <div>左侧「课程路线」会一步步引导你从词法分析走到代码生成。</div>
+            <div className="logo">🛠️</div>
+            <div className="big">开始实现你的编译器</div>
+            <div className="hint">
+              在左侧「文件」页签打开 src/ 下的源文件；<br />
+              或点顶部「初始化空工程」，从「课程路线」第一步开始，<br />
+              跟着左侧的「基础知识」和「需要创建的文件」一步步写代码。
+            </div>
           </div>
         )}
       </div>
