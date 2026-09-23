@@ -475,6 +475,78 @@ body.resizing .center {
   border-radius: 4px;
 }
 
+/* ---------- 基础知识栏目 ---------- */
+.basics-panel {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.basics-intro {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--fg-dim);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.basics-section {
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-3);
+  overflow: hidden;
+}
+
+.basics-section-title {
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+}
+
+.basics-section-body {
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--fg);
+}
+
+.basics-section-body .markdown {
+  font-size: 12.5px;
+}
+
+.basics-section-body h1,
+.basics-section-body h2,
+.basics-section-body h3 {
+  margin: 10px 0 6px;
+  color: var(--fg);
+}
+
+.basics-section-body table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+}
+
+.basics-section-body th,
+.basics-section-body td {
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  text-align: left;
+  font-size: 12px;
+}
+
+.basics-section-body th {
+  background: var(--bg-2);
+  color: var(--fg);
+}
+
 /* ---------- Editor ---------- */
 .editor-area {
   flex: 1 1 auto;

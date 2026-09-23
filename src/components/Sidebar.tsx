@@ -3,6 +3,7 @@ import type { Stage, ProjectFile } from '../types';
 import { PROJECT_INTRO, localizeText } from '../lib/curriculum';
 import { FileTree } from './FileTree';
 import { GitPanel } from './GitPanel';
+import { BasicsPanel } from './BasicsPanel';
 
 export function Sidebar({
   style,
@@ -34,8 +35,8 @@ export function Sidebar({
   files: ProjectFile[];
   activePath: string;
   language: 'c' | 'cpp';
-  tab: 'course' | 'files' | 'git';
-  onTabChange: (tab: 'course' | 'files' | 'git') => void;
+  tab: 'course' | 'files' | 'git' | 'basics';
+  onTabChange: (tab: 'course' | 'files' | 'git' | 'basics') => void;
   createPending: boolean;
   onCreateConsumed: () => void;
   onSelectStage: (id: string) => void;
@@ -58,6 +59,9 @@ export function Sidebar({
         </button>
         <button className={`sidebar-tab ${tab === 'git' ? 'active' : ''}`} onClick={() => onTabChange('git')}>
           版本
+        </button>
+        <button className={`sidebar-tab ${tab === 'basics' ? 'active' : ''}`} onClick={() => onTabChange('basics')}>
+          基础
         </button>
       </div>
       {tab === 'course' ? (
@@ -159,8 +163,10 @@ export function Sidebar({
           onRename={onRenameFile}
           onRefresh={onRefreshFiles}
         />
-      ) : (
+      ) : tab === 'git' ? (
         <GitPanel projectDir={projectDir} onProjectChanged={onProjectChanged} />
+      ) : (
+        <BasicsPanel />
       )}
     </aside>
   );

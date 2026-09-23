@@ -36,7 +36,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [version, setVersion] = useState('');
   const [starterAvailable, setStarterAvailable] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<'course' | 'files' | 'git'>('course');
+  const [sidebarTab, setSidebarTab] = useState<'course' | 'files' | 'git' | 'basics'>('course');
   const [createPending, setCreatePending] = useState(false);
   const [docName, setDocName] = useState<string | null>(null);
   const [contextPaths, setContextPaths] = useState<string[]>(() => {
