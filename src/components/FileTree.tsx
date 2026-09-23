@@ -132,7 +132,7 @@ export function FileTree({
                 else onOpen(node.path);
               }}
             >
-              {isDir ? '📁 ' : '📄 '}
+              <span className="file-icon">{isDir ? '📁' : '📄'}</span>
               {node.name}
             </span>
           )}

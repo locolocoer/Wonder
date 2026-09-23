@@ -1264,8 +1264,8 @@ body.resizing .center {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 8px;
-  font-size: 12.5px;
+  padding: 4px 8px;
+  font-size: 13.5px;
   cursor: default;
   white-space: nowrap;
 }
@@ -1280,10 +1280,12 @@ body.resizing .center {
 }
 
 .file-toggle {
-  width: 12px;
+  width: 16px;
   color: var(--fg-dim);
   cursor: pointer;
   user-select: none;
+  font-size: 13px;
+  text-align: center;
 }
 
 .file-name {
@@ -1291,6 +1293,13 @@ body.resizing .center {
   flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.5;
+}
+
+.file-icon {
+  font-size: 15px;
+  line-height: 1;
+  margin-right: 3px;
 }
 
 .file-name.dir {
@@ -1314,7 +1323,7 @@ body.resizing .center {
 .file-del {
   color: var(--fg-dim);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 13px;
   visibility: hidden;
   padding: 0 3px;
 }
