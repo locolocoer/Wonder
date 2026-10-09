@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { Settings, ToolchainInfo, UpdateStatus } from '../types';
+import type { Settings, SsoUser, ToolchainInfo, UpdateStatus } from '../types';
 
 export function SettingsModal({
   settings,
@@ -8,6 +8,9 @@ export function SettingsModal({
   onClose,
   onSave,
   onDetect,
+  ssoUser,
+  onSsoLogin,
+  onSsoLogout,
 }: {
   settings: Settings;
   toolchain: ToolchainInfo;
@@ -15,6 +18,9 @@ export function SettingsModal({
   onClose: () => void;
   onSave: (patch: Partial<Settings>) => void;
   onDetect: () => void;
+  ssoUser?: SsoUser | null;
+  onSsoLogin?: () => Promise<void>;
+  onSsoLogout?: () => Promise<void>;
 }) {
   const [apiKey, setApiKey] = useState(settings.apiKey);
   const [model, setModel] = useState(settings.model);
@@ -25,6 +31,12 @@ export function SettingsModal({
   const [theme, setTheme] = useState(settings.theme);
   const [language, setLanguage] = useState(settings.language);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
+  const [ssoEnabled, setSsoEnabled] = useState(settings.sso?.enabled ?? false);
+  const [ssoIssuer, setSsoIssuer] = useState(settings.sso?.issuer ?? '');
+  const [ssoClientId, setSsoClientId] = useState(settings.sso?.clientId ?? '');
+  const [ssoRedirectUri, setSsoRedirectUri] = useState(settings.sso?.redirectUri ?? '');
+  const [ssoScopes, setSsoScopes] = useState(settings.sso?.scopes ?? 'openid profile email');
+  const [ssoBusy, setSsoBusy] = useState(false);
 
   useEffect(() => {
     const off = window.api.onEvent('update:status', (s: UpdateStatus) => setUpdateStatus(s));
@@ -62,8 +74,37 @@ export function SettingsModal({
       toolchain: { ccPath: ccPath.trim(), asmPath: asmPath.trim() },
       theme,
       language,
+      sso: {
+        enabled: ssoEnabled,
+        issuer: ssoIssuer.trim(),
+        clientId: ssoClientId.trim(),
+        redirectUri: ssoRedirectUri.trim(),
+        scopes: ssoScopes.trim() || 'openid profile email',
+      },
     });
     onClose();
+  };
+
+  const handleSsoLogin = async () => {
+    if (!onSsoLogin) return;
+    setSsoBusy(true);
+    try {
+      await onSsoLogin();
+    } catch {
+      /* 错误已处理 */
+    } finally {
+      setSsoBusy(false);
+    }
+  };
+
+  const handleSsoLogout = async () => {
+    if (!onSsoLogout) return;
+    setSsoBusy(true);
+    try {
+      await onSsoLogout();
+    } finally {
+      setSsoBusy(false);
+    }
   };
 
   return (
@@ -154,6 +195,35 @@ export function SettingsModal({
             )}
           </div>
           {updateLabel() && <div className="hint">{updateLabel()}</div>}
+        </div>
+
+        <div className="field">
+          <label>SSO 登录（阿里云 IDaaS / OIDC）</label>
+          <label className="check-row">
+            <input type="checkbox" checked={ssoEnabled} onChange={(e) => setSsoEnabled(e.target.checked)} />
+            启动时要求登录
+          </label>
+          <input value={ssoIssuer} onChange={(e) => setSsoIssuer(e.target.value)} placeholder="Issuer，如 https://xxx.account.aliyuncs.com" />
+          <input value={ssoClientId} onChange={(e) => setSsoClientId(e.target.value)} placeholder="Client ID" />
+          <input value={ssoRedirectUri} onChange={(e) => setSsoRedirectUri(e.target.value)} placeholder="回调地址（与 IDaaS 控制台一致）" />
+          <input value={ssoScopes} onChange={(e) => setSsoScopes(e.target.value)} placeholder="scopes（默认 openid profile email）" />
+          <div className="hint">配置后请在阿里云 IDaaS 控制台创建 OIDC 应用，把这里的回调地址填进去。</div>
+          <div className="toolchain-row">
+            {ssoUser ? (
+              <>
+                <span className="sso-user">
+                  {ssoUser.name || ssoUser.email || ssoUser.sub}（已登录）
+                </span>
+                <button className="btn" onClick={handleSsoLogout} disabled={ssoBusy}>
+                  退出登录
+                </button>
+              </>
+            ) : (
+              <button className="btn" onClick={handleSsoLogin} disabled={ssoBusy}>
+                {ssoBusy ? '登录中…' : '登录'}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="field about">

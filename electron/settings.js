@@ -11,6 +11,13 @@ const DEFAULT_SETTINGS = {
   projectDir: '',
   theme: 'vs-dark',
   language: 'c', // 实现语言：'c' 或 'cpp'
+  sso: {
+    enabled: false, // 是否启用启动登录
+    issuer: '', // OIDC issuer，如 https://<实例>.account.aliyuncs.com
+    clientId: '',
+    redirectUri: 'http://127.0.0.1:18317/callback', // 必须与 IDaaS 控制台登记的回调地址一致
+    scopes: 'openid profile email',
+  },
 };
 
 function settingsPath(app) {
@@ -21,9 +28,18 @@ function loadSettings(app) {
   try {
     const raw = fs.readFileSync(settingsPath(app), 'utf8');
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_SETTINGS, ...parsed, toolchain: { ...DEFAULT_SETTINGS.toolchain, ...(parsed.toolchain || {}) } };
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      toolchain: { ...DEFAULT_SETTINGS.toolchain, ...(parsed.toolchain || {}) },
+      sso: { ...DEFAULT_SETTINGS.sso, ...(parsed.sso || {}) },
+    };
   } catch {
-    return { ...DEFAULT_SETTINGS, toolchain: { ...DEFAULT_SETTINGS.toolchain } };
+    return {
+      ...DEFAULT_SETTINGS,
+      toolchain: { ...DEFAULT_SETTINGS.toolchain },
+      sso: { ...DEFAULT_SETTINGS.sso },
+    };
   }
 }
 

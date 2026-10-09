@@ -8,6 +8,7 @@ import type {
   ChatMessage,
   BuildResult,
   BuildLogEntry,
+  SsoUser,
 } from './types';
 import { CURRICULUM, findStage } from './lib/curriculum';
 import { buildMessages, MODE_LABELS, type AiMode, type ProjectContext } from './lib/ai-prompts';
@@ -18,6 +19,7 @@ import { OutputPanel } from './components/OutputPanel';
 import { ChatPanel } from './components/ChatPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { DocModal } from './components/DocModal';
+import { LoginScreen } from './components/LoginScreen';
 
 export default function App() {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -39,6 +41,8 @@ export default function App() {
   const [sidebarTab, setSidebarTab] = useState<'course' | 'files' | 'git' | 'basics'>('course');
   const [createPending, setCreatePending] = useState(false);
   const [docName, setDocName] = useState<string | null>(null);
+  const [ssoLoggedIn, setSsoLoggedIn] = useState(false);
+  const [ssoUser, setSsoUser] = useState<SsoUser | null>(null);
   const [contextPaths, setContextPaths] = useState<string[]>(() => {
     try {
       const arr = JSON.parse(localStorage.getItem('cc-context') || '[]');
@@ -114,6 +118,10 @@ export default function App() {
       setToolchain(b.toolchain);
       setVersion(b.version);
       setStarterAvailable(b.starterAvailable);
+      if (b.sso) {
+        setSsoLoggedIn(b.sso.loggedIn);
+        setSsoUser(b.sso.user);
+      }
       const sid = localStorage.getItem('cc-stage') || 'stage1';
       let done: string[] = [];
       try {
@@ -662,10 +670,48 @@ export default function App() {
     setToolchain(tc);
   };
 
+  // ---- SSO ----------------------------------------------------------------
+  const doSsoLogin = async () => {
+    const r = await window.api.ssoLogin();
+    if (!r.ok) throw new Error(r.error || '登录失败');
+    setSsoLoggedIn(true);
+    setSsoUser(r.user || null);
+  };
+
+  const doSsoLogout = async () => {
+    await window.api.ssoLogout();
+    setSsoLoggedIn(false);
+    setSsoUser(null);
+  };
+
   if (!settings || !toolchain) {
     return (
       <div className="app" style={{ alignItems: 'center', justifyContent: 'center' }}>
         <div>正在加载…</div>
+      </div>
+    );
+  }
+
+  const settingsModal = showSettings && (
+    <SettingsModal
+      settings={settings}
+      toolchain={toolchain}
+      version={version}
+      onClose={() => setShowSettings(false)}
+      onSave={saveSettings}
+      onDetect={detectToolchain}
+      ssoUser={ssoUser}
+      onSsoLogin={doSsoLogin}
+      onSsoLogout={doSsoLogout}
+    />
+  );
+
+  // SSO 启动登录门：启用且未登录时显示登录页
+  if (settings.sso && settings.sso.enabled && !ssoLoggedIn) {
+    return (
+      <div className="app">
+        <LoginScreen onLogin={doSsoLogin} onOpenSettings={openSettings} />
+        {settingsModal}
       </div>
     );
   }
@@ -750,16 +796,7 @@ export default function App() {
           onClearChat={clearChat}
         />
       </div>
-      {showSettings && (
-        <SettingsModal
-          settings={settings}
-          toolchain={toolchain}
-          version={version}
-          onClose={() => setShowSettings(false)}
-          onSave={saveSettings}
-          onDetect={detectToolchain}
-        />
-      )}
+      {settingsModal}
       {docName && <DocModal name={docName} onClose={() => setDocName(null)} />}
     </div>
   );

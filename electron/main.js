@@ -14,6 +14,7 @@ const shellRunner = require('./shell');
 const term = require('./term');
 const updater = require('./updater');
 const git = require('./git');
+const sso = require('./sso');
 
 const SCHEME = 'app';
 let mainWindow = null;
@@ -249,12 +250,14 @@ function registerIpc() {
   });
 
   ipcMain.handle('app:get-boot', () => {
+    const sess = sso.loadSession(app);
     return {
       version: app.getVersion(),
       platform: process.platform,
       settings,
       toolchain: toolchain.detectToolchain(settings, app.getAppPath()),
       starterAvailable: fs.existsSync(path.join(app.getAppPath(), 'starter')),
+      sso: { loggedIn: Boolean(sess), user: sess ? sess.user : null },
     };
   });
 
@@ -266,6 +269,34 @@ function registerIpc() {
   });
 
   ipcMain.handle('toolchain:detect', () => toolchain.detectToolchain(settings, app.getAppPath()));
+
+  // ---- SSO 登录（阿里云 IDaaS / OIDC 授权码 + PKCE）----
+  ipcMain.handle('sso:status', () => {
+    const sess = sso.loadSession(app);
+    return {
+      enabled: Boolean(settings.sso && settings.sso.enabled),
+      loggedIn: Boolean(sess),
+      user: sess ? sess.user : null,
+    };
+  });
+  ipcMain.handle('sso:login', async () => {
+    const cfg = (settings.sso && settings.sso.enabled) ? settings.sso : null;
+    if (!cfg) return { ok: false, error: 'SSO 未启用' };
+    const r = await sso.startLogin(cfg, mainWindow);
+    if (r.ok) {
+      sso.saveSession(app, {
+        user: r.user,
+        tokens: r.tokens,
+        expiresAt: r.tokens && r.tokens.expires_in ? Date.now() + r.tokens.expires_in * 1000 : 0,
+      });
+      return { ok: true, user: r.user };
+    }
+    return { ok: false, error: r.error };
+  });
+  ipcMain.handle('sso:logout', () => {
+    sso.clearSession(app);
+    return { ok: true };
+  });
 
   ipcMain.handle('project:choose', async () => {
     const res = await dialog.showOpenDialog(mainWindow, {

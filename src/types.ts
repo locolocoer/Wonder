@@ -16,6 +16,21 @@ export interface ToolchainInfo {
   missing: string[];
 }
 
+export interface SsoConfig {
+  enabled: boolean;
+  issuer: string;
+  clientId: string;
+  redirectUri: string;
+  scopes: string;
+}
+
+export interface SsoUser {
+  sub: string;
+  name: string;
+  email: string;
+  picture: string;
+}
+
 export interface Settings {
   apiKey: string;
   model: string;
@@ -25,6 +40,7 @@ export interface Settings {
   projectDir: string;
   theme: 'vs-dark' | 'vs' | 'hc-black';
   language: 'c' | 'cpp';
+  sso: SsoConfig;
 }
 
 export interface BootInfo {
@@ -33,6 +49,7 @@ export interface BootInfo {
   settings: Settings;
   toolchain: ToolchainInfo;
   starterAvailable: boolean;
+  sso?: { loggedIn: boolean; user: SsoUser | null };
 }
 
 export interface ProjectFile {
@@ -197,6 +214,9 @@ declare global {
       revealPath(rel: string): Promise<{ ok: boolean }>;
       readReference(): Promise<{ ok: boolean; content?: string; error?: string }>;
       openHeader(payload: { kind: 'sys' | 'local'; name: string; basePath?: string }): Promise<{ ok: boolean; path?: string; name?: string; content?: string; error?: string }>;
+      ssoStatus(): Promise<{ enabled: boolean; loggedIn: boolean; user: SsoUser | null }>;
+      ssoLogin(): Promise<{ ok: boolean; user?: SsoUser; error?: string }>;
+      ssoLogout(): Promise<{ ok: boolean }>;
       onEvent(channel: string, cb: (data: any) => void): () => void;
     };
   }

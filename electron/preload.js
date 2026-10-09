@@ -60,6 +60,10 @@ contextBridge.exposeInMainWorld('api', {
   readReference: () => ipcRenderer.invoke('app:read-reference'),
   openHeader: (payload) => ipcRenderer.invoke('app:open-header', payload),
 
+  ssoStatus: () => ipcRenderer.invoke('sso:status'),
+  ssoLogin: () => ipcRenderer.invoke('sso:login'),
+  ssoLogout: () => ipcRenderer.invoke('sso:logout'),
+
   onEvent: (channel, cb) => {
     const listener = (_event, data) => cb(data);
     ipcRenderer.on(channel, listener);
