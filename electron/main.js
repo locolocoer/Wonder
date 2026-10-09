@@ -15,6 +15,7 @@ const term = require('./term');
 const updater = require('./updater');
 const git = require('./git');
 const sso = require('./sso');
+const ssoConfig = require('./sso-config');
 
 const SCHEME = 'app';
 let mainWindow = null;
@@ -257,7 +258,11 @@ function registerIpc() {
       settings,
       toolchain: toolchain.detectToolchain(settings, app.getAppPath()),
       starterAvailable: fs.existsSync(path.join(app.getAppPath(), 'starter')),
-      sso: { loggedIn: Boolean(sess), user: sess ? sess.user : null },
+      sso: {
+        enabled: Boolean(ssoConfig.enabled && ssoConfig.issuer && ssoConfig.clientId),
+        loggedIn: Boolean(sess),
+        user: sess ? sess.user : null,
+      },
     };
   });
 
@@ -270,18 +275,17 @@ function registerIpc() {
 
   ipcMain.handle('toolchain:detect', () => toolchain.detectToolchain(settings, app.getAppPath()));
 
-  // ---- SSO 登录（阿里云 IDaaS / OIDC 授权码 + PKCE）----
+  // ---- SSO 登录（OIDC 授权码 + PKCE，配置来自 sso-config.js）----
   ipcMain.handle('sso:status', () => {
     const sess = sso.loadSession(app);
     return {
-      enabled: Boolean(settings.sso && settings.sso.enabled),
+      enabled: Boolean(ssoConfig.enabled && ssoConfig.issuer && ssoConfig.clientId),
       loggedIn: Boolean(sess),
       user: sess ? sess.user : null,
     };
   });
   ipcMain.handle('sso:login', async () => {
-    const cfg = (settings.sso && settings.sso.enabled) ? settings.sso : null;
-    if (!cfg) return { ok: false, error: 'SSO 未启用' };
+    const cfg = ssoConfig;
     const r = await sso.startLogin(cfg, mainWindow);
     if (r.ok) {
       sso.saveSession(app, {

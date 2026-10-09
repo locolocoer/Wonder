@@ -16,14 +16,6 @@ export interface ToolchainInfo {
   missing: string[];
 }
 
-export interface SsoConfig {
-  enabled: boolean;
-  issuer: string;
-  clientId: string;
-  redirectUri: string;
-  scopes: string;
-}
-
 export interface SsoUser {
   sub: string;
   name: string;
@@ -40,7 +32,6 @@ export interface Settings {
   projectDir: string;
   theme: 'vs-dark' | 'vs' | 'hc-black';
   language: 'c' | 'cpp';
-  sso: SsoConfig;
 }
 
 export interface BootInfo {
@@ -49,7 +40,7 @@ export interface BootInfo {
   settings: Settings;
   toolchain: ToolchainInfo;
   starterAvailable: boolean;
-  sso?: { loggedIn: boolean; user: SsoUser | null };
+  sso?: { enabled: boolean; loggedIn: boolean; user: SsoUser | null };
 }
 
 export interface ProjectFile {

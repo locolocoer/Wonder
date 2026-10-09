@@ -41,6 +41,7 @@ export default function App() {
   const [sidebarTab, setSidebarTab] = useState<'course' | 'files' | 'git' | 'basics'>('course');
   const [createPending, setCreatePending] = useState(false);
   const [docName, setDocName] = useState<string | null>(null);
+  const [ssoEnabled, setSsoEnabled] = useState(false);
   const [ssoLoggedIn, setSsoLoggedIn] = useState(false);
   const [ssoUser, setSsoUser] = useState<SsoUser | null>(null);
   const [contextPaths, setContextPaths] = useState<string[]>(() => {
@@ -119,6 +120,7 @@ export default function App() {
       setVersion(b.version);
       setStarterAvailable(b.starterAvailable);
       if (b.sso) {
+        setSsoEnabled(b.sso.enabled);
         setSsoLoggedIn(b.sso.loggedIn);
         setSsoUser(b.sso.user);
       }
@@ -707,7 +709,7 @@ export default function App() {
   );
 
   // SSO 启动登录门：启用且未登录时显示登录页
-  if (settings.sso && settings.sso.enabled && !ssoLoggedIn) {
+  if (ssoEnabled && !ssoLoggedIn) {
     return (
       <div className="app">
         <LoginScreen onLogin={doSsoLogin} onOpenSettings={openSettings} />
