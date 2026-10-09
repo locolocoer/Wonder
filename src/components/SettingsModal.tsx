@@ -58,7 +58,7 @@ export function SettingsModal({
       apiKey: apiKey.trim(),
       model,
       baseUrl: baseUrl.trim(),
-      temperature: Number(temperature) || 0.6,
+      temperature: Number.isFinite(Number(temperature)) ? Number(temperature) : 0.6,
       toolchain: { ccPath: ccPath.trim(), asmPath: asmPath.trim() },
       theme,
       language,

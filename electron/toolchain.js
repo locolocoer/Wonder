@@ -2,6 +2,7 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { decodeOutput } = require('./decode');
 
 // Candidate C compilers, ordered by preference.
 const CC_CANDIDATES = ['gcc', 'cc', 'clang', 'tcc', 'cl'];
@@ -37,11 +38,13 @@ function findOnPath(cmd) {
   try {
     const exe = withExe(cmd);
     const tool = process.platform === 'win32' ? 'where' : 'which';
-    const out = execFileSync(tool, [exe], {
-      encoding: 'utf8',
+    const outBuf = execFileSync(tool, [exe], {
+      encoding: 'buffer',
       stdio: ['ignore', 'pipe', 'ignore'],
       windowsHide: true,
     });
+    // 中文 Windows 上 where/which 输出按 GBK，需自适应解码（否则中文路径成乱码）
+    const out = decodeOutput(outBuf);
     const lines = out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
     if (lines.length) return lines[0];
   } catch {

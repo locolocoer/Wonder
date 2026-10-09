@@ -236,7 +236,7 @@ export const Terminal = React.memo(function Terminal({ initialCwd }: { initialCw
           term.write(prompt());
         } else if (ch === '\x0c') {
           term.clear();
-          term.write(prompt());
+          redrawLine(); // 清屏后重绘提示符与当前输入，避免旧输入残留
         } else if (ch >= ' ') {
           insertChar(ch);
         }

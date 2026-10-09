@@ -53,18 +53,24 @@ export function EditorPane({
   // 避免共用 model 导致「打开头文件时 main.c 内容被串改」。
   const tabUri = (p: string) => 'inmemory://wonder/' + encodeURIComponent(p);
 
-  const langFor = (name: string): string => {
+  // 只读标签的 name 带「（参考答案）/（头文件）」后缀，故优先按真实 path 判断语言
+  const langFor = (path: string, name: string): string => {
+    const p = path.toLowerCase();
+    if (/\.(cpp|cc|cxx|hpp)$/.test(p)) return 'cpp';
+    if (/\.(c|h)$/.test(p)) return 'c';
+    if (/\.(md|markdown)$/.test(p)) return 'markdown';
+    if (/\.json$/.test(p)) return 'json';
+    if (/\.(bat|cmd)$/.test(p)) return 'bat';
+    if (/\.(sh|bash)$/.test(p)) return 'shell';
+    if (/\.(js|jsx)$/.test(p)) return 'javascript';
+    if (/\.(ts|tsx)$/.test(p)) return 'typescript';
+    if (/\.(html|htm)$/.test(p)) return 'html';
+    if (/\.css$/.test(p)) return 'css';
+    // 无扩展名：C++ 标准头文件（vector/iostream 等，路径含 include/c++）按 cpp
+    if (p.includes('/c++/') || p.includes('\\c++\\')) return 'cpp';
     const n = name.toLowerCase();
     if (/\.(cpp|cc|cxx|hpp)$/.test(n)) return 'cpp';
     if (/\.(c|h)$/.test(n)) return 'c';
-    if (/\.(md|markdown)$/.test(n)) return 'markdown';
-    if (/\.json$/.test(n)) return 'json';
-    if (/\.(bat|cmd)$/.test(n)) return 'bat';
-    if (/\.(sh|bash)$/.test(n)) return 'shell';
-    if (/\.(js|jsx)$/.test(n)) return 'javascript';
-    if (/\.(ts|tsx)$/.test(n)) return 'typescript';
-    if (/\.(html|htm)$/.test(n)) return 'html';
-    if (/\.css$/.test(n)) return 'css';
     return 'plaintext';
   };
 
@@ -93,7 +99,7 @@ export function EditorPane({
           <Editor
             height="100%"
             path={tabUri(active.path)}
-            language={langFor(active.name)}
+            language={langFor(active.path, active.name)}
             theme={theme}
             value={active.content}
             onChange={handleChange}

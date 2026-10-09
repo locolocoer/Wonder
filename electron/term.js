@@ -2,7 +2,7 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const { decodeOutput } = require('./decode');
+const { createStreamDecoder } = require('./decode');
 
 /**
  * 一个简单的终端会话：维护工作目录、逐条执行命令并把输出回传。
@@ -12,6 +12,7 @@ function createTermSession({ cwd, gccBin, send }) {
   let currentCwd = cwd;
   let currentChild = null;
   const sessionEnv = {}; // 用户在终端里 set 的环境变量，跨命令持久
+  const clearedVars = new Set(); // 被 `set VAR=` 清空过的变量（不能回落到 process.env）
   const dirStack = []; // pushd/popd 目录栈
 
   function reply(text) {
@@ -99,22 +100,28 @@ function createTermSession({ cwd, gccBin, send }) {
       const eq = arg.indexOf('=');
       if (eq < 0) {
         const name = arg.replace(/^"|"$/g, '');
-        const val = sessionEnv[name] !== undefined ? sessionEnv[name] : process.env[name];
-        reply(val === undefined || val === null ? '\r\n' : `\r\n${val}\r\n`);
+        const val = clearedVars.has(name) ? '' : (sessionEnv[name] !== undefined ? sessionEnv[name] : process.env[name]);
+        reply(val === undefined || val === null || val === '' ? '\r\n' : `\r\n${val}\r\n`);
         finish(0);
         return;
       }
       let name = arg.slice(0, eq).trim().replace(/^"|"$/g, '');
       let value = arg.slice(eq + 1).replace(/^"|"$/g, '');
       if (name) {
-        if (value === '') delete sessionEnv[name];
-        else sessionEnv[name] = value;
+        if (value === '') {
+          delete sessionEnv[name];
+          clearedVars.add(name);
+        } else {
+          sessionEnv[name] = value;
+          clearedVars.delete(name);
+        }
       }
       finish(0);
       return;
     }
 
     const env = { ...process.env, ...sessionEnv, FORCE_COLOR: '1', TERM: 'xterm-256color', CLICOLOR_FORCE: '1' };
+    for (const k of clearedVars) delete env[k];
     if (gccBin) env.PATH = [gccBin, env.PATH].filter(Boolean).join(path.delimiter);
 
     const shell = process.env.ComSpec || (process.platform === 'win32' ? 'cmd.exe' : '/bin/sh');
@@ -128,13 +135,14 @@ function createTermSession({ cwd, gccBin, send }) {
     }
     currentChild = child;
 
-    // 分块累积 + 50ms 防抖流式回传：既接近实时，又保证 UTF-8/GBK 多字节序列完整解码。
-    let buf = Buffer.alloc(0);
+    // 流式解码 + 50ms 防抖：流式解码器跨 chunk 保持多字节字符状态，防抖保证接近实时。
+    const streamDecoder = createStreamDecoder();
+    let pending = Buffer.alloc(0);
     let timer = null;
     const flush = () => {
-      if (!buf.length) return;
-      reply(decodeOutput(buf));
-      buf = Buffer.alloc(0);
+      if (!pending.length) return;
+      reply(streamDecoder.push(pending));
+      pending = Buffer.alloc(0);
     };
     const schedule = () => {
       if (timer) return;
@@ -144,11 +152,11 @@ function createTermSession({ cwd, gccBin, send }) {
       }, 50);
     };
     child.stdout.on('data', (d) => {
-      buf = Buffer.concat([buf, d]);
+      pending = Buffer.concat([pending, d]);
       schedule();
     });
     child.stderr.on('data', (d) => {
-      buf = Buffer.concat([buf, d]);
+      pending = Buffer.concat([pending, d]);
       schedule();
     });
     child.on('error', (e) => reply(`\r\n${e.message}\r\n`));
@@ -164,14 +172,22 @@ function createTermSession({ cwd, gccBin, send }) {
   }
 
   function kill() {
-    if (currentChild) {
+    if (!currentChild) return;
+    const child = currentChild;
+    // Windows 下 cmd.exe /c <cmd> 的子进程是孙进程，child.kill() 杀不掉；用 taskkill /T 杀整棵树
+    if (process.platform === 'win32' && child.pid) {
       try {
-        currentChild.kill();
+        spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
       } catch {
         /* ignore */
       }
-      currentChild = null;
     }
+    try {
+      child.kill();
+    } catch {
+      /* ignore */
+    }
+    // currentChild 由 'close' 事件置空
   }
 
   return { run, kill, getCwd: () => currentCwd };

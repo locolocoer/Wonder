@@ -132,8 +132,10 @@ async function runBuild(payload, emit) {
 
   // 2. Run each test case.
   for (const tc of testCases) {
+    // 用例 id 只用于生成临时文件名，须净化，防止 ../ 越界写文件
+    const tid = String(tc.id || '').replace(/[^A-Za-z0-9_-]/g, '_') || 'test';
     log('info', `— 测试 [${tc.mode}] ${tc.name}`, tc.id);
-    const srcFile = path.join(workDir, `${tc.id}.c`);
+    const srcFile = path.join(workDir, `${tid}.c`);
     fs.writeFileSync(srcFile, tc.source || '', 'utf8');
     const steps = [];
     const result = {
@@ -154,8 +156,8 @@ async function runBuild(payload, emit) {
 
     if (tc.mode === 'run') {
       // Compile C -> asm, assemble+link -> exe, run -> compare exit code.
-      const asmFile = path.join(workDir, `${tc.id}.s`);
-      const exeFile = path.join(workDir, exeName(tc.id));
+      const asmFile = path.join(workDir, `${tid}.s`);
+      const exeFile = path.join(workDir, exeName(tid));
       const c2s = await runCmd(compilerBin, [srcFile], { cwd: workDir });
       steps.push({ name: '用你的编译器生成汇编', status: c2s.code === 0 ? 'ok' : 'fail', detail: `mycc ${tc.id}.c → ${tc.id}.s` });
       if (c2s.code !== 0) {

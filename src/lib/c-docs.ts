@@ -967,6 +967,8 @@ export function registerCDocs(): void {
       const word = model.getWordAtPosition(position);
       if (!word) return null;
       const line = model.getLineContent(position.lineNumber);
+      // #include 行交给 headerProvider 打开头文件，避免两个 provider 同时命中产生歧义
+      if (/^\s*#\s*include\b/.test(line)) return null;
       const before = line.slice(0, word.startColumn - 1);
       const isStd = before.endsWith('std::');
       if (!docs[word.word] && !isStd) return null;
@@ -981,7 +983,7 @@ export function registerCDocs(): void {
   const headerProvider: monaco.languages.DefinitionProvider = {
     provideDefinition(model, position) {
       const line = model.getLineContent(position.lineNumber);
-      const m = /^\s*#\s*include\s*([<"])([^>"]+)[>"]/.exec(line);
+      const m = /^\s*#\s*include\s*([<"])([^>"]+)\1/.exec(line);
       if (!m) return null;
       const delim = m[1];
       const name = m[2];
@@ -989,7 +991,7 @@ export function registerCDocs(): void {
       const startCol = matchStart + m[0].indexOf(delim) + 1; // 头文件名起始列（0 基）
       const endCol = startCol + name.length;
       const col = position.column - 1;
-      if (col < startCol || col > endCol) return null;
+      if (col < startCol || col >= endCol) return null;
       return {
         uri: monaco.Uri.from({ scheme: 'wonder-header', authority: delim === '<' ? 'sys' : 'local', path: '/' + name }),
         range: new monaco.Range(position.lineNumber, startCol + 1, position.lineNumber, endCol + 1),

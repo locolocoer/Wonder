@@ -69,9 +69,20 @@ async function commit(projectDir, message) {
 }
 
 async function rollback(projectDir, hash) {
-  // 回滚会丢弃未提交改动，先 stash 备份，避免误操作丢代码（可用 git stash pop 找回）
-  const stash = await runGit(projectDir, ['stash', 'push', '-u', '-m', 'wonder: rollback backup']);
-  const stashed = stash.code === 0;
+  // 先确认是否有未提交改动，决定是否需要 stash 备份
+  const st0 = await runGit(projectDir, ['status', '--porcelain']);
+  const hasChanges = st0.code === 0 && st0.stdout.trim().length > 0;
+
+  let stashed = false;
+  if (hasChanges) {
+    const stash = await runGit(projectDir, ['stash', 'push', '-u', '-m', 'wonder: rollback backup']);
+    if (stash.code !== 0) {
+      // 备份失败绝不能继续 reset --hard，否则会永久丢弃未提交改动
+      return { ok: false, error: '备份失败，已中止回滚：' + (stash.stderr || stash.stdout) };
+    }
+    stashed = true;
+  }
+
   const r = await runGit(projectDir, ['reset', '--hard', hash]);
   if (r.code !== 0) {
     if (stashed) await runGit(projectDir, ['stash', 'pop']); // 回滚失败，弹回暂存

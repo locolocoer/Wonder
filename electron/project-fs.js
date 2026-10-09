@@ -124,4 +124,5 @@ module.exports = {
   deleteProjectEntry,
   renameProjectEntry,
   resolveSafe,
+  isInside,
 };

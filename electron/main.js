@@ -19,6 +19,7 @@ const SCHEME = 'app';
 let mainWindow = null;
 let settings = null;
 let buildAbort = null;
+let buildInProgress = false;
 let termSession = null;
 let allowClose = false;
 const aiAborts = new Map();
@@ -72,14 +73,19 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 function registerScheme(distDir) {
+  const root = path.resolve(distDir);
   protocol.handle(SCHEME, (request) => {
     try {
       const u = new URL(request.url);
       let rel = decodeURIComponent(u.pathname);
       if (rel === '/' || rel === '') rel = '/index.html';
-      let filePath = path.join(distDir, rel);
+      // 防目录穿越：解析后必须仍位于 distDir 内
+      let filePath = path.resolve(root, '.' + rel.replace(/\\/g, '/'));
+      if (filePath !== root && !filePath.startsWith(root + path.sep)) {
+        return new Response('Not found', { status: 404 });
+      }
       if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-        filePath = path.join(distDir, 'index.html');
+        filePath = path.join(root, 'index.html');
       }
       return net.fetch(pathToFileURL(filePath).toString());
     } catch (e) {
@@ -306,17 +312,30 @@ function registerIpc() {
       // bundledGccBin 返回的是 .../w64devkit/bin 目录，其上一级才是 w64devkit 根目录
       const w64root = gccBin ? path.dirname(gccBin) : (app.getAppPath() ? path.join(app.getAppPath(), 'vendor', 'w64devkit') : null);
       if (w64root) {
-        // 1) C / Windows 头文件：include/<name>
-        const direct = path.join(w64root, 'include', name);
-        try {
-          if (fs.statSync(direct).isFile()) full = direct;
-        } catch {
-          /* not found */
+        // 1) C / Windows 头文件：include/<name>（防 name 含 ../ 越界）
+        const direct = path.resolve(w64root, 'include', name);
+        if (projectFs.isInside(path.resolve(w64root, 'include'), direct)) {
+          try {
+            if (fs.statSync(direct).isFile()) full = direct;
+          } catch {
+            /* not found */
+          }
         }
-        // 2) C++ 标准头文件：lib/gcc/**/include/c++ 下递归查找
+        // 2) C++ 标准头文件：lib/gcc/**/include/c++ 下递归查找（支持 bits/stdc++.h 等嵌套路径）
         if (!full) {
           const gccLibDir = path.join(w64root, 'lib', 'gcc');
           for (const cxxRoot of findCxxRoots(gccLibDir)) {
+            const nested = path.resolve(cxxRoot, name);
+            if (projectFs.isInside(cxxRoot, nested)) {
+              try {
+                if (fs.statSync(nested).isFile()) {
+                  full = nested;
+                  break;
+                }
+              } catch {
+                /* ignore */
+              }
+            }
             const found = findFileRecursive(cxxRoot, name, 5);
             if (found) {
               full = found;
@@ -326,11 +345,17 @@ function registerIpc() {
         }
       }
     } else if (settings.projectDir) {
-      const base = payload.basePath
-        ? path.dirname(path.resolve(settings.projectDir, String(payload.basePath)))
-        : settings.projectDir;
-      const p = path.resolve(base, name);
-      if (fs.existsSync(p)) full = p;
+      try {
+        const root = path.resolve(settings.projectDir);
+        const base = payload.basePath
+          ? path.dirname(path.resolve(root, String(payload.basePath)))
+          : root;
+        const p = path.resolve(base, name);
+        // 本地头文件必须位于工程目录内，防止 ../ 越界读取任意文件
+        if (projectFs.isInside(root, p) && fs.existsSync(p)) full = p;
+      } catch {
+        /* ignore */
+      }
     }
 
     if (!full) return { ok: false, error: `找不到头文件 ${name}` };
@@ -348,6 +373,7 @@ function registerIpc() {
     return projectFs.listProject(settings.projectDir);
   });
   ipcMain.handle('project:read', (_e, rel) => {
+    if (!settings.projectDir) return { ok: false, error: '未选择工程目录' };
     try {
       return projectFs.readProjectFile(settings.projectDir, rel);
     } catch (e) {
@@ -355,6 +381,7 @@ function registerIpc() {
     }
   });
   ipcMain.handle('project:write', (_e, rel, content) => {
+    if (!settings.projectDir) return { ok: false, error: '未选择工程目录' };
     try {
       return projectFs.writeProjectFile(settings.projectDir, rel, content);
     } catch (e) {
@@ -362,6 +389,7 @@ function registerIpc() {
     }
   });
   ipcMain.handle('project:create', (_e, rel, kind) => {
+    if (!settings.projectDir) return { ok: false, error: '未选择工程目录' };
     try {
       return projectFs.createProjectEntry(settings.projectDir, rel, kind);
     } catch (e) {
@@ -369,6 +397,7 @@ function registerIpc() {
     }
   });
   ipcMain.handle('project:delete', (_e, rel) => {
+    if (!settings.projectDir) return { ok: false, error: '未选择工程目录' };
     try {
       return projectFs.deleteProjectEntry(settings.projectDir, rel);
     } catch (e) {
@@ -376,6 +405,7 @@ function registerIpc() {
     }
   });
   ipcMain.handle('project:rename', (_e, rel, newName) => {
+    if (!settings.projectDir) return { ok: false, error: '未选择工程目录' };
     try {
       return projectFs.renameProjectEntry(settings.projectDir, rel, String(newName || ''));
     } catch (e) {
@@ -384,6 +414,8 @@ function registerIpc() {
   });
 
   ipcMain.handle('build:run', async (_e, payload) => {
+    if (buildInProgress) return { ok: false, error: '编译正在进行中，请稍候', results: [] };
+    buildInProgress = true;
     buildAbort = null;
     const send = (type, text, testId) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
@@ -393,13 +425,14 @@ function registerIpc() {
     try {
       const lang = payload.language === 'cpp' ? 'cpp' : 'c';
       const tc = toolchain.detectToolchain(settings, app.getAppPath());
-      let effectiveCc = payload.ccPath && payload.ccPath.trim() ? payload.ccPath.trim() : '';
-      if (!effectiveCc) {
-        effectiveCc = lang === 'cpp' ? tc.cxx.path || tc.cc.path : tc.cc.path;
-      }
+      // 使用 detectToolchain 已验证过的路径（ccPath 失效时自动回退内置 gcc/g++），避免裸传失效路径
+      const effectiveCc = lang === 'cpp' ? (tc.cxx.path || tc.cc.path) : tc.cc.path;
+      if (!effectiveCc) return { ok: false, error: '未找到可用的编译器', results: [] };
       return await buildRunner.runBuild({ ...payload, language: lang, projectDir: settings.projectDir, ccPath: effectiveCc }, send);
     } catch (e) {
       return { ok: false, error: e.message, results: [] };
+    } finally {
+      buildInProgress = false;
     }
   });
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   BootInfo,
   Settings,
@@ -63,6 +63,10 @@ export default function App() {
   });
   const dragStateRef = useRef<{ which: 'chat' | 'sidebar' | 'output'; size: number } | null>(null);
 
+  // 稳定 style 对象，避免每次渲染新建对象导致 React.memo(ChatPanel) 失效
+  const chatStyle = useMemo(() => ({ width: chatWidth }), [chatWidth]);
+  const outputStyle = useMemo(() => ({ height: outputHeight }), [outputHeight]);
+
   const requestIdRef = useRef<string | null>(null);
 
   const startDrag = (which: 'chat' | 'sidebar' | 'output') => (e: React.MouseEvent) => {
@@ -113,7 +117,8 @@ export default function App() {
       const sid = localStorage.getItem('cc-stage') || 'stage1';
       let done: string[] = [];
       try {
-        done = JSON.parse(localStorage.getItem('cc-done') || '[]');
+        const parsed = JSON.parse(localStorage.getItem('cc-done') || '[]');
+        if (Array.isArray(parsed)) done = parsed;
       } catch {
         done = [];
       }
@@ -207,6 +212,10 @@ export default function App() {
     async (path: string) => {
       const existing = tabs.find((t) => t.path === path);
       if (existing) {
+        // 若此前是只读打开的头文件标签，从文件树再次打开时转为可编辑
+        if (existing.readOnly) {
+          setTabs((prev) => prev.map((t) => (t.path === path ? { ...t, readOnly: false } : t)));
+        }
         setActivePath(path);
         return;
       }
@@ -234,28 +243,35 @@ export default function App() {
   }, []);
 
   const saveAll = useCallback(async () => {
+    // 快照当前脏内容，写盘期间若用户继续输入，只清除「内容未再变化」的脏标记
+    const snapshot = tabs.filter((t) => t.dirty && !t.readOnly).map((t) => ({ path: t.path, content: t.content }));
     let failed = 0;
-    for (const t of tabs) {
-      if (!t.dirty || t.readOnly) continue;
-      const r = await window.api.projectWrite(t.path, t.content);
+    for (const s of snapshot) {
+      const r = await window.api.projectWrite(s.path, s.content);
       if (!r.ok) failed++;
     }
     if (failed > 0) {
       await window.api.dialogMessage({ type: 'error', message: `${failed} 个文件保存失败，请检查文件是否被占用或路径是否有效。` });
     } else {
-      setTabs((prev) => prev.map((t) => ({ ...t, dirty: false })));
+      setTabs((prev) =>
+        prev.map((t) => {
+          const snap = snapshot.find((s) => s.path === t.path);
+          return snap && t.content === snap.content ? { ...t, dirty: false } : t;
+        })
+      );
     }
   }, [tabs]);
 
   const saveActive = useCallback(async () => {
     const t = tabs.find((x) => x.path === activePath);
     if (!t || t.readOnly) return;
-    const r = await window.api.projectWrite(t.path, t.content);
+    const snapContent = t.content;
+    const r = await window.api.projectWrite(t.path, snapContent);
     if (!r.ok) {
       await window.api.dialogMessage({ type: 'error', message: `保存失败：${r.error || '未知错误'}` });
       return;
     }
-    setTabs((prev) => prev.map((x) => (x.path === activePath ? { ...x, dirty: false } : x)));
+    setTabs((prev) => prev.map((x) => (x.path === activePath && x.content === snapContent ? { ...x, dirty: false } : x)));
   }, [tabs, activePath]);
 
   const closeTab = useCallback(
@@ -394,7 +410,7 @@ export default function App() {
       return;
     }
     setTabs((prev) => prev.filter((t) => t.path !== path && !t.path.startsWith(path + '/')));
-    if (activePath === path) setActivePath('');
+    if (activePath === path || activePath.startsWith(path + '/')) setActivePath('');
     await loadFiles();
   };
 
@@ -403,6 +419,11 @@ export default function App() {
     await loadFiles();
     const next: FileTab[] = [];
     for (const t of tabs) {
+      // 只读标签（参考答案/头文件）是快照，路径可能不在工程内，直接保留不重读
+      if (t.readOnly) {
+        next.push(t);
+        continue;
+      }
       const r = await window.api.projectRead(t.path);
       if (r.ok) next.push({ ...t, content: r.content || '', dirty: false });
     }
@@ -562,6 +583,7 @@ export default function App() {
 
   const sendChat = useCallback(async (mode: AiMode, text?: string) => {
     if (!settings) return;
+    if (requestIdRef.current) return; // 上一次请求未结束，防止并发请求互相覆盖
     if (!settings.apiKey) {
       setShowSettings(true);
       return;
@@ -616,8 +638,10 @@ export default function App() {
         )
       );
     } finally {
-      setStreaming(false);
-      requestIdRef.current = null;
+      if (requestIdRef.current === baseId) {
+        setStreaming(false);
+        requestIdRef.current = null;
+      }
     }
   }, [settings, currentStageId, buildResult, messages, saveAll, collectProjectContext]);
 
@@ -696,7 +720,7 @@ export default function App() {
           />
           <div className="divider-h" onMouseDown={startDrag('output')} title="拖动调整高度" />
           <OutputPanel
-            style={{ height: outputHeight }}
+            style={outputStyle}
             buildResult={buildResult}
             logs={logs}
             buildRunning={buildRunning}
@@ -712,7 +736,7 @@ export default function App() {
         </div>
         <div className="divider-v" onMouseDown={startDrag('chat')} title="拖动调整宽度" />
         <ChatPanel
-          style={{ width: chatWidth }}
+          style={chatStyle}
           messages={messages}
           streaming={streaming}
           hasApiKey={Boolean(settings.apiKey)}

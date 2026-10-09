@@ -54,11 +54,6 @@ function modeInstruction(mode: AiMode, language: 'c' | 'cpp'): string {
   }
 }
 
-function truncate(text: string, max: number): string {
-  if (text.length <= max) return text;
-  return text.slice(0, max) + `\n... (已截断，共 ${text.length} 字符)`;
-}
-
 function stageBlock(stage: Stage | undefined, language: 'c' | 'cpp'): string {
   if (!stage) return '（当前无选中阶段）';
   const parts: string[] = [
@@ -70,9 +65,9 @@ function stageBlock(stage: Stage | undefined, language: 'c' | 'cpp'): string {
     parts.push(`需要修改的文件：\n${stage.files.map((f) => `- ${localizeText(f, language)}`).join('\n')}`);
   }
   if (stage.background && stage.background.length) {
-    parts.push(`基础知识（面向小白）：\n${stage.background.map((b) => `- ${b}`).join('\n')}`);
+    parts.push(`基础知识（面向小白）：\n${stage.background.map((b) => `- ${localizeText(b, language)}`).join('\n')}`);
   }
-  parts.push(`接口契约：\n${stage.contract}`);
+  parts.push(`接口契约：\n${localizeText(stage.contract, language)}`);
   parts.push(`验收标准：\n${stage.acceptance.map((a) => localizeText(a, language)).join('\n')}`);
   return parts.join('\n');
 }
@@ -91,32 +86,41 @@ function treeBlock(tree: string[]): string {
 
 function langFor(path: string): string {
   const lower = path.toLowerCase();
-  if (/\.(cpp|cc|cxx|hpp)$/.test(path)) return 'cpp';
-  if (/\.(c|h)$/.test(path)) return 'c';
-  if (lower === 'makefile' || lower.endsWith('makefile')) return 'makefile';
-  if (/\.(bat|sh)$/.test(path)) return 'bash';
-  if (/\.md$/.test(path)) return 'markdown';
+  if (/\.(cpp|cc|cxx|hpp)$/.test(lower)) return 'cpp';
+  if (/\.(c|h)$/.test(lower)) return 'c';
+  if (lower.endsWith('makefile')) return 'makefile';
+  if (/\.(bat|sh)$/.test(lower)) return 'bash';
+  if (/\.md$/.test(lower)) return 'markdown';
   return '';
 }
 
 function filesBlock(contents: Record<string, string>): string {
   const entries = Object.entries(contents);
   if (!entries.length) return '（学生尚未编写任何源码文件）';
-  // 给足预算，确保 AI 能看到完整的源码文件（编译器源码通常每个几 KB）。
-  // DeepSeek 上下文有 64K token，这里用 ~90K 字符（约 30K token）仍留有余量。
+  // 硬性总预算：累计不超 totalBudget，避免超出 DeepSeek 上下文；单个文件尽量完整带上，不按均分截断。
   const totalBudget = 90000;
-  const per = Math.max(16000, Math.floor(totalBudget / entries.length));
-  return entries
-    .map(([path, content]) => {
-      const lang = langFor(path);
-      return `### 文件 ${path}\n\`\`\`${lang}\n${truncate(content, per)}\n\`\`\``;
-    })
-    .join('\n\n');
+  let remaining = totalBudget;
+  const parts: string[] = [];
+  for (const [path, content] of entries) {
+    const lang = langFor(path);
+    const take = Math.min(remaining, content.length);
+    if (take < content.length) {
+      parts.push(`### 文件 ${path}\n\`\`\`${lang}\n${content.slice(0, take)}\n\`\`\`\n<!-- 该文件已截断，剩余 ${content.length - take} 字符未包含 -->`);
+    } else {
+      parts.push(`### 文件 ${path}\n\`\`\`${lang}\n${content}\n\`\`\``);
+    }
+    remaining -= take;
+    if (remaining <= 0) {
+      parts.push('（其余文件因上下文预算已省略）');
+      break;
+    }
+  }
+  return parts.join('\n\n');
 }
 
 function buildBlock(build: BuildResult | null): string {
   if (!build) return '（尚无最近一次编译/测试结果）';
-  if (!build.ok) return `最近一次编译失败：${build.error || '未知错误'}`;
+  if (!build.compileOk) return `最近一次编译失败：${build.error || '未知错误'}`;
   const lines = [
     `最近一次测试：共 ${build.total} 项，通过 ${build.passCount}，失败 ${build.failCount}`,
   ];

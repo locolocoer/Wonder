@@ -1483,6 +1483,11 @@ body.resizing .center {
   cursor: pointer;
 }
 
+.context-item input:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .context-name {
   flex: 1 1 auto;
   min-width: 0;

@@ -72,11 +72,13 @@ export const ChatPanel = React.memo(function ChatPanel({
   const renderTreeNode = (node: TreeNode, depth: number): React.ReactNode => {
     const isDir = node.type === 'dir';
     const isOpen = expanded.has(node.path);
-    const checked = isPathSelected(node.path, contextPaths);
+    const isChecked = isPathSelected(node.path, contextPaths);
+    // 由「选中目录」派生的子项不可单独取消，需先取消勾选目录
+    const derived = isChecked && !contextPaths.includes(node.path);
     return (
       <React.Fragment key={node.path}>
         <div
-          className={`context-item ${isDir ? 'dir' : ''} ${checked ? 'checked' : ''}`}
+          className={`context-item ${isDir ? 'dir' : ''} ${isChecked ? 'checked' : ''}`}
           style={{ paddingLeft: 6 + depth * 14 }}
           title={node.path}
         >
@@ -86,10 +88,10 @@ export const ChatPanel = React.memo(function ChatPanel({
           >
             {isDir ? (isOpen ? '▾' : '▸') : ''}
           </span>
-          <input type="checkbox" checked={checked} onChange={() => handleToggle(node)} />
+          <input type="checkbox" checked={isChecked} disabled={derived} onChange={() => handleToggle(node)} />
           <span
             className="context-name"
-            onClick={() => (isDir ? toggleExpand(node.path) : onToggleContext(node.path))}
+            onClick={() => (isDir ? toggleExpand(node.path) : !derived && onToggleContext(node.path))}
           >
             {isDir ? '📁' : '📄'} {node.name}
           </span>
@@ -210,6 +212,7 @@ export const ChatPanel = React.memo(function ChatPanel({
                   {filter.trim() ? (
                     filtered.map((f) => {
                       const checked = isPathSelected(f.path, contextPaths);
+                      const derived = checked && !contextPaths.includes(f.path);
                       return (
                         <div
                           key={f.path}
@@ -218,8 +221,8 @@ export const ChatPanel = React.memo(function ChatPanel({
                           title={f.path}
                         >
                           <span className="context-toggle" />
-                          <input type="checkbox" checked={checked} onChange={() => onToggleContext(f.path)} />
-                          <span className="context-name" onClick={() => onToggleContext(f.path)}>
+                          <input type="checkbox" checked={checked} disabled={derived} onChange={() => onToggleContext(f.path)} />
+                          <span className="context-name" onClick={() => !derived && onToggleContext(f.path)}>
                             {f.type === 'dir' ? '📁' : '📄'} {f.name}
                           </span>
                         </div>

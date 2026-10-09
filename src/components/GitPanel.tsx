@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { GitFile, GitCommit } from '../types';
 
 const KIND_LABEL: Record<GitFile['kind'], string> = {
@@ -31,6 +31,7 @@ export function GitPanel({
   const [tip, setTip] = useState('');
   const [diffPath, setDiffPath] = useState<string | null>(null);
   const [diffText, setDiffText] = useState('');
+  const diffReqRef = useRef(0);
 
   const refresh = useCallback(async () => {
     if (!projectDir) return;
@@ -61,6 +62,7 @@ export function GitPanel({
   };
 
   const doCommit = async () => {
+    if (busy) return;
     if (!msg.trim()) {
       setTip('请先填写提交说明');
       return;
@@ -111,7 +113,9 @@ export function GitPanel({
       setDiffText('');
       return;
     }
+    const req = ++diffReqRef.current;
     const r = await window.api.gitDiff(path);
+    if (req !== diffReqRef.current) return; // 已有更新的请求，丢弃本次结果
     setDiffPath(path);
     setDiffText(r.ok && r.diff ? r.diff : '(无差异)');
   };

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectFile } from '../types';
 import { buildTree, type TreeNode } from '../lib/file-tree';
 
@@ -29,6 +29,7 @@ export function FileTree({
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const renameDoneRef = useRef(false);
   const tree = useMemo(() => buildTree(files), [files]);
 
   // 外部（快捷键 Ctrl+N）请求新建文件时，打开新建输入框
@@ -75,7 +76,13 @@ export function FileTree({
   };
 
   const confirmRename = () => {
-    if (!renaming) return;
+    // Enter 与 blur 都会触发，用 ref 防止重复提交 / 取消后又被 blur 误提交
+    if (renameDoneRef.current) return;
+    renameDoneRef.current = true;
+    if (!renaming) {
+      renameDoneRef.current = false;
+      return;
+    }
     const name = renameValue.trim();
     if (name && name !== renaming.split('/').pop()) onRename(renaming, name);
     setRenaming(null);
@@ -83,6 +90,7 @@ export function FileTree({
   };
 
   const cancelRename = () => {
+    renameDoneRef.current = true;
     setRenaming(null);
     setRenameValue('');
   };
@@ -141,6 +149,7 @@ export function FileTree({
               className="file-op"
               title="重命名"
               onClick={() => {
+                renameDoneRef.current = false;
                 setRenaming(node.path);
                 setRenameValue(node.name);
               }}
