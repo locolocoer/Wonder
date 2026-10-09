@@ -198,16 +198,16 @@ export function SettingsModal({
         </div>
 
         <div className="field">
-          <label>SSO 登录（阿里云 IDaaS / OIDC）</label>
+          <label>账号登录（SSO / OIDC）</label>
           <label className="check-row">
             <input type="checkbox" checked={ssoEnabled} onChange={(e) => setSsoEnabled(e.target.checked)} />
             启动时要求登录
           </label>
-          <input value={ssoIssuer} onChange={(e) => setSsoIssuer(e.target.value)} placeholder="Issuer，如 https://xxx.account.aliyuncs.com" />
+          <input value={ssoIssuer} onChange={(e) => setSsoIssuer(e.target.value)} placeholder="Issuer，如 https://你的租户.auth0.com" />
           <input value={ssoClientId} onChange={(e) => setSsoClientId(e.target.value)} placeholder="Client ID" />
-          <input value={ssoRedirectUri} onChange={(e) => setSsoRedirectUri(e.target.value)} placeholder="回调地址（与 IDaaS 控制台一致）" />
+          <input value={ssoRedirectUri} onChange={(e) => setSsoRedirectUri(e.target.value)} placeholder="回调地址（与 Auth0 控制台一致）" />
           <input value={ssoScopes} onChange={(e) => setSsoScopes(e.target.value)} placeholder="scopes（默认 openid profile email）" />
-          <div className="hint">配置后请在阿里云 IDaaS 控制台创建 OIDC 应用，把这里的回调地址填进去。</div>
+          <div className="hint">支持 Auth0 等任意标准 OIDC 提供商。在提供商控制台创建应用后，把这里的回调地址填进去。</div>
           <div className="toolchain-row">
             {ssoUser ? (
               <>

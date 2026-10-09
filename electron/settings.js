@@ -13,9 +13,9 @@ const DEFAULT_SETTINGS = {
   language: 'c', // 实现语言：'c' 或 'cpp'
   sso: {
     enabled: false, // 是否启用启动登录
-    issuer: '', // OIDC issuer，如 https://<实例>.account.aliyuncs.com
+    issuer: '', // OIDC issuer，如 https://<你的租户>.auth0.com
     clientId: '',
-    redirectUri: 'http://127.0.0.1:18317/callback', // 必须与 IDaaS 控制台登记的回调地址一致
+    redirectUri: 'http://127.0.0.1:18317/callback', // 必须与 Auth0 等提供商登记的回调地址一致
     scopes: 'openid profile email',
   },
 };

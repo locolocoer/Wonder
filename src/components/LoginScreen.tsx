@@ -29,7 +29,7 @@ export function LoginScreen({
         <div className="login-title">Wonder</div>
         <div className="login-sub">AI 编程训练 · 从零写一个编译器</div>
         <button className="btn primary login-btn" onClick={login} disabled={busy}>
-          {busy ? '登录中…' : '使用阿里云账号登录'}
+          {busy ? '登录中…' : '账号登录'}
         </button>
         {error && <div className="login-error">{error}</div>}
         <button className="login-settings" onClick={onOpenSettings}>
