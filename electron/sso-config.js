@@ -4,8 +4,8 @@
 // 留空 issuer/clientId 时，启动登录门不会生效（便于开发调试）。
 module.exports = {
   enabled: true,
-  issuer: '', // 例：https://dev-xxxx.us.auth0.com（你的 Auth0 租户域名）
-  clientId: '', // Auth0 应用的 Client ID
+  issuer: 'https://dev-g2h1pjuppp2rhk2a.us.auth0.com',
+  clientId: 'sXIjt7ndfdlMQMq5u8dQvjLHfTNVRF1E',
   redirectUri: 'http://127.0.0.1:18317/callback', // 必须与 Auth0 控制台登记的 Callback URL 一致
   scopes: 'openid profile email',
 };
