@@ -1,114 +1,116 @@
-# Wonder —— AI 陪练式项目编程训练器
+# Wonder
 
-一个 **AI 陪练式**桌面软件：陪你从零实现一个个真实软件项目（首个项目：用 C 写一个编译器，输出 x86-64 汇编），
-由大模型（DeepSeek）充当老师，帮你**拆分任务、逐步给提示、评判你的实现**。
-
-## 命名由来
-
-「Wonder」取「好奇」「惊叹」之意，也谐音中文「问道」——向师傅请教、探寻方法：
-
-- **好奇**：一切编程能力始于好奇心——想知道编译器如何工作、操作系统如何启动，这里鼓励你多问「为什么」。
-- **问道**：AI 是师傅，你是求道者；不会就问，老师给提示、给评判，却不替你写代码。
-- **惊叹**：亲手把一个编译器、一个 OS 从零做出来，收获「原来我真的能做到」的惊叹。
-
-「Wonder」= 带着好奇出发、一路问道、亲手做出让自己惊叹的作品。编译器只是第一课，后面还有更多项目。
+AI 陪练式编程训练器：以真实项目为载体（第一个项目是从零实现一个 C 编译器，输出 x86-64 汇编），由大模型担任导师，负责拆分任务、逐步提示、评判实现。
 
 ## 功能
 
-- **课程路线**：内置 6 个阶段（工程骨架 → 词法分析 → 语法分析/AST → 语义分析/符号表 → 代码生成 → 综合扩展），每阶段含任务目标、接口契约、由浅入深的提示与验收标准。
-- **代码编辑器**：内置 VS Code 同款 Monaco 编辑器（C 语法高亮），多文件页签、文件树管理。
-- **AI 老师**：接入 DeepSeek API，三个快捷动作 + 自由提问：
-  - 🧩 拆分当前任务
-  - 💡 给点提示
-  - 🔍 评判我的代码
-- **一键编译测试**：自动编译你写的编译器，再运行当前阶段的测试用例（token 比对 / AST 比对 / 运行退出码 / 报错检查），实时显示差异。
-- **内置 gcc 工具链**：随应用分发便携版 MinGW-w64（w64devkit，含 gcc/as/ld/make），无需安装即可「编译并测试」；也可检测系统 gcc/clang 并在设置里切换。
-- **起始模板 + 参考实现**：`starter/` 提供 C 工程骨架与完整参考实现 `mycc.c`（卡住时可对照）。
+- **分阶段课程路线**：内置 6 个阶段（工程骨架 → 词法分析 → 语法分析/AST → 语义分析/符号表 → 代码生成 → 综合扩展），每阶段含任务目标、接口契约、提示与验收标准。
+- **编译原理基础教程**：独立「基础」栏目，11 节面向零基础的入门内容（编译器原理、词法/语法/语义/代码生成、x86-64 汇编、工具链等）。
+- **代码编辑器**：内置 Monaco 编辑器，C/C++ 语法高亮、多文件页签、文件树、悬停文档、代码补全、Ctrl+点击跳转头文件。
+- **AI 导师**：接入 DeepSeek API，支持「拆分当前任务 / 给点提示 / 评判我的代码」三个快捷动作与自由提问，可手动选择要纳入上下文的文件。
+- **一键编译测试**：自动编译你写的编译器，再运行当前阶段的测试用例（词法 token / AST / 运行退出码 / 报错检查），实时显示差异。
+- **内置工具链**：随应用分发便携版 w64devkit（含 gcc/g++/as/ld/make），无需安装即可「编译并测试」，也可检测系统 gcc/clang 并在设置里切换。
+- **起始模板 + 参考实现**：`starter/` 提供 C 与 C++ 双版本工程骨架及参考实现（`mycc.c` / `mycc.cpp`）。
+- **终端与版本管理**：内置终端（xterm.js）与 Git 面板（状态、提交、回滚、差异）。
+- **SSO 登录**：支持 OIDC 授权码 + PKCE 的启动登录（默认 Auth0），配置写于 `electron/sso-config.js`。
+- **自动更新**：主源阿里云 OSS，失败自动回退 GitHub Releases。
+
+## 命名由来
+
+「Wonder」取「好奇」「惊叹」之意，也谐音中文「问道」——向师傅请教、探寻方法。
 
 ## 技术栈
 
-- Electron + React + TypeScript + Vite
-- Monaco Editor（离线打包，无 CDN 依赖）
+- Electron 33 · React 18 · TypeScript · Vite
+- Monaco Editor · xterm.js
 - DeepSeek API（OpenAI 兼容，流式输出）
+- w64devkit 16.2.0（gcc/g++ 便携工具链）
 
-## 开发运行
+## 快速开始
 
 ```bash
 npm install
 npm run dev        # 启动 Vite + Electron（开发模式）
 ```
 
-打包分发（可选）：
+打包分发：
 
 ```bash
-npm run dist       # 用 electron-builder 生成安装包到 release/
+npm run dist       # electron-builder 生成安装包到 release/
 ```
 
-> 注意：内置 gcc 工具链（`vendor/`，约 500MB）不提交进 git，本地或 CI 首次构建前先运行
-> `./scripts/download-w64devkit.ps1` 下载它。
+> 内置工具链（`vendor/`，约 500MB）不提交进 git，首次构建前先运行
+> `./scripts/download-w64devkit.ps1` 下载。
 
-## CI 打包与发布（GitHub Actions）
-
-- 推送到 `main` 或发起 PR：`.github/workflows/build.yml` 会自动做类型检查、构建安装包，并把产物上传为 Artifact。
-- 推送 `v*` 标签（如 `git tag v0.1.0 && git push origin v0.1.0`）或手动触发 workflow：`.github/workflows/release.yml` 会构建 Windows 安装包、发布 GitHub Release，并同步到阿里云 OSS。
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0   # 触发 Release
-```
-
-## 阿里云 OSS 发布 + 自动更新
-
-安装包通过 [electron-updater](https://www.electron.build/auto-update) 自动更新，主源为阿里云 OSS（bucket `fryappstore`，目录 `wonder/`），OSS 不可用时自动回退 GitHub Releases。
-
-需要在仓库 `Settings → Secrets and variables → Actions` 配置：
-
-| 名称 | 位置 | 说明 |
-|---|---|---|
-| `OSS_ACCESS_KEY_ID` | Secrets | 阿里云 AccessKey ID（对 `fryappstore` 桶有写权限） |
-| `OSS_ACCESS_KEY_SECRET` | Secrets | 阿里云 AccessKey Secret |
-| `OSS_BUCKET` | Variables | 默认 `fryappstore` |
-| `OSS_ENDPOINT` | Variables | 默认 `oss-cn-beijing.aliyuncs.com`（按桶所在区域改） |
-
-发布后产物结构（OSS 桶内 `wonder/` 目录）：
-
-```
-wonder/latest.yml                       # 稳定更新指针
-wonder/v0.1.0/Wonder-0.1.0-setup.exe    # 安装包
-wonder/v0.1.0/Wonder-0.1.0-setup.exe.blockmap
-```
-
-要点：
-- 桶内 `wonder/` 目录需允许**匿名读取**（公共读），否则客户端下载 403、只能回退 GitHub。
-- 发新版本：改 `package.json` 的 `version` 后打新 tag，`latest.yml` 会指向新版本。
-- 客户端更新源可用环境变量 `WONDER_UPDATE_MIRROR` 覆盖（完整 URL）。
-
-## 使用步骤
-
-1. 启动后点 **⚙ 设置** 填入 DeepSeek API Key（`platform.deepseek.com` 获取，仅存本机）。
-2. 点 **选择工程目录**，再点 **初始化起始模板**（把 `starter/` 骨架复制进去）。
-3. 应用已内置 gcc 工具链，开箱即可「编译并测试」；若想用系统 gcc 可在设置里指定路径。
-4. 跟着左侧 **课程路线** 从阶段 1 开始，在编辑器中写 `src/lexer.c`、`src/parser.c`、`src/codegen.c`。
-5. 随时点 **▶ 编译并测试** 看测试结果；卡住时点 **💡 给点提示** 或 **🔍 评判我的代码**。
-
-## 你的编译器（mycc）命令行接口
+## 编译器（mycc）命令行接口
 
 ```
 mycc -t <file.c>   输出词法单元
 mycc -a <file.c>   输出抽象语法树（S 表达式）
 mycc <file.c>      输出 x86-64 AT&T 汇编
-mycc --version     输出 "mycc 0.1.0"
+mycc --version     输出版本号
 ```
 
 ## 目录结构
 
 ```
 c-compiler-trainer/
-├── electron/          主进程（工具链检测、文件管理、编译测试、AI 流式调用）
-├── src/               渲染层（React UI + 课程数据 + AI 提示词）
-│   ├── lib/curriculum.ts   内置课程与测试用例
-│   ├── lib/ai-prompts.ts   AI 老师提示词
-│   └── components/         UI 组件
-├── starter/           复制给用户的起始工程（C 骨架 + 参考实现）
+├── electron/              主进程
+│   ├── main.js            窗口与 IPC
+│   ├── build-runner.js    编译 + 测试流水线
+│   ├── term.js            终端会话
+│   ├── git.js             git CLI 封装
+│   ├── sso.js             OIDC 登录（授权码 + PKCE）
+│   └── sso-config.js      SSO 配置（发布前在此填入 Auth0 凭据）
+├── src/                   渲染层（React）
+│   ├── lib/               curriculum / ai-prompts / c-docs / basics
+│   └── components/        UI 组件
+├── starter/               复制给用户的起始工程（C/C++ 骨架 + 参考实现）
+├── scripts/               构建辅助脚本
 └── package.json
 ```
+
+## 构建与发布
+
+- 推送到 `main` 或发起 PR：`.github/workflows/build.yml` 做类型检查、构建安装包并上传 Artifact。
+- 推送 `v*` 标签：`.github/workflows/release.yml` 构建 Windows 安装包、发布 GitHub Release，并同步到阿里云 OSS。
+
+```bash
+git tag v0.2.4
+git push origin v0.2.4   # 触发 Release
+```
+
+### 阿里云 OSS 自动更新
+
+安装包通过 [electron-updater](https://www.electron.build/auto-update) 自动更新，主源为阿里云 OSS（bucket `fryappstore`，目录 `wonder/`），OSS 不可用时回退 GitHub Releases。
+
+需在仓库 `Settings → Secrets and variables → Actions` 配置：
+
+| 名称 | 位置 | 说明 |
+|---|---|---|
+| `OSS_ACCESS_KEY_ID` | Secrets | 阿里云 AccessKey ID（对 `fryappstore` 桶有写权限） |
+| `OSS_ACCESS_KEY_SECRET` | Secrets | 阿里云 AccessKey Secret |
+| `OSS_BUCKET` | Variables | 默认 `fryappstore` |
+| `OSS_ENDPOINT` | Variables | 默认 `oss-cn-beijing.aliyuncs.com` |
+
+发布后产物结构（OSS 桶内 `wonder/` 目录）：
+
+```
+wonder/latest.yml                       # 稳定更新指针
+wonder/v0.2.4/Wonder-0.2.4-setup.exe    # 安装包
+wonder/v0.2.4/Wonder-0.2.4-setup.exe.blockmap
+```
+
+要点：
+
+- 桶内 `wonder/` 目录需允许**匿名读取**（公共读），否则客户端下载 403、只能回退 GitHub。
+- 发新版本：改 `package.json` 的 `version` 后打新 tag，`latest.yml` 会指向新版本。
+- 客户端更新源可用环境变量 `WONDER_UPDATE_MIRROR` 覆盖。
+
+## 使用流程
+
+1. 若启用了 SSO，启动后先登录。
+2. 在 **⚙ 设置** 填入 DeepSeek API Key（`platform.deepseek.com` 获取，仅存本机）。
+3. **选择工程目录** → **初始化起始模板**。
+4. 在设置里选择实现语言（C 或 C++），跟着 **课程路线** 从阶段 1 开始写 `src/` 下的源码。
+5. 随时 **▶ 编译并测试**；卡住时用 **💡 给点提示** 或 **🔍 评判我的代码**。
