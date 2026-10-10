@@ -180,10 +180,19 @@ async function startLogin(config, parentWindow) {
     win.webContents.on('did-navigate', (_e, url) => {
       if (url.startsWith(redirectUri)) handleRedirect(url);
     });
+    // 真正的加载失败（DNS、连接被拒等）才报错；ERR_ABORTED (-3) 是重定向过程中的正常中断，忽略
+    win.webContents.on('did-fail-load', (_e, code, desc) => {
+      if (code === -3) return;
+      finish({ ok: false, error: `无法打开登录页：${desc}（${code}）` });
+    });
     win.on('closed', () => {
       if (!done) finish({ ok: false, error: '登录窗口已关闭' });
     });
-    win.loadURL(authUrl).catch((e) => finish({ ok: false, error: '无法打开登录页：' + e.message }));
+    win.loadURL(authUrl).catch((e) => {
+      const msg = String((e && e.message) || e);
+      if (/ERR_ABORTED/.test(msg)) return; // 重定向中断，属正常
+      finish({ ok: false, error: '无法打开登录页：' + msg });
+    });
   });
 }
 
