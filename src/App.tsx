@@ -68,6 +68,13 @@ export default function App() {
   });
   const dragStateRef = useRef<{ which: 'chat' | 'sidebar' | 'output'; size: number } | null>(null);
 
+  // 全局界面缩放（字体大小），通过 zoom 作用于整个文档
+  useEffect(() => {
+    if (!settings) return;
+    const scale = Number.isFinite(settings.uiScale) && settings.uiScale > 0 ? settings.uiScale : 1;
+    document.documentElement.style.zoom = String(scale);
+  }, [settings?.uiScale]);
+
   // 稳定 style 对象，避免每次渲染新建对象导致 React.memo(ChatPanel) 失效
   const chatStyle = useMemo(() => ({ width: chatWidth }), [chatWidth]);
   const outputStyle = useMemo(() => ({ height: outputHeight }), [outputHeight]);

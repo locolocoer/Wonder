@@ -30,6 +30,7 @@ export function SettingsModal({
   const [asmPath, setAsmPath] = useState(settings.toolchain.asmPath);
   const [theme, setTheme] = useState(settings.theme);
   const [language, setLanguage] = useState(settings.language);
+  const [uiScale, setUiScale] = useState(String(settings.uiScale ?? 1));
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
   const [ssoBusy, setSsoBusy] = useState(false);
 
@@ -61,6 +62,7 @@ export function SettingsModal({
   };
 
   const save = () => {
+    const scale = Number(uiScale);
     onSave({
       apiKey: apiKey.trim(),
       model,
@@ -69,6 +71,7 @@ export function SettingsModal({
       toolchain: { ccPath: ccPath.trim(), asmPath: asmPath.trim() },
       theme,
       language,
+      uiScale: Number.isFinite(scale) && scale > 0 ? scale : 1,
     });
     onClose();
   };
@@ -137,6 +140,17 @@ export function SettingsModal({
             <option value="vs">浅色（vs）</option>
             <option value="hc-black">高对比度（hc-black）</option>
           </select>
+        </div>
+
+        <div className="field">
+          <label>全局字体大小</label>
+          <select value={uiScale} onChange={(e) => setUiScale(e.target.value)}>
+            <option value="0.85">小（85%）</option>
+            <option value="1">标准（100%）</option>
+            <option value="1.15">大（115%）</option>
+            <option value="1.3">特大（130%）</option>
+          </select>
+          <div className="hint">作用于整个界面（含编辑器与终端），保存后立即生效。</div>
         </div>
 
         <div className="field">

@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
   projectDir: '',
   theme: 'vs-dark',
   language: 'c', // 实现语言：'c' 或 'cpp'
+  uiScale: 1, // 全局界面缩放（字体大小），1 = 100%
 };
 
 function settingsPath(app) {

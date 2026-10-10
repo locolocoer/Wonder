@@ -32,6 +32,7 @@ export interface Settings {
   projectDir: string;
   theme: 'vs-dark' | 'vs' | 'hc-black';
   language: 'c' | 'cpp';
+  uiScale: number;
 }
 
 export interface BootInfo {
