@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld('api', {
   winToggleMaximize: () => ipcRenderer.invoke('win:toggle-maximize'),
   winClose: () => ipcRenderer.invoke('win:close'),
   winIsMaximized: () => ipcRenderer.invoke('win:is-maximized'),
+  setZoom: (factor) => ipcRenderer.invoke('ui:set-zoom', factor),
   closeNow: () => ipcRenderer.invoke('app:close-now'),
 
   aiChat: (payload) => ipcRenderer.invoke('ai:chat', payload),

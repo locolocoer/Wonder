@@ -68,11 +68,11 @@ export default function App() {
   });
   const dragStateRef = useRef<{ which: 'chat' | 'sidebar' | 'output'; size: number } | null>(null);
 
-  // 全局界面缩放（字体大小），通过 zoom 作用于整个文档
+  // 全局界面缩放（字体大小），用 Electron 原生缩放，保证鼠标坐标与布局一致
   useEffect(() => {
     if (!settings) return;
     const scale = Number.isFinite(settings.uiScale) && settings.uiScale > 0 ? settings.uiScale : 1;
-    document.documentElement.style.zoom = String(scale);
+    window.api.setZoom(scale);
   }, [settings?.uiScale]);
 
   // 稳定 style 对象，避免每次渲染新建对象导致 React.memo(ChatPanel) 失效
@@ -88,9 +88,15 @@ export default function App() {
       size: which === 'chat' ? chatWidth : which === 'sidebar' ? sidebarWidth : outputHeight,
     };
     const isRow = which === 'output';
-    const onMove = (ev: MouseEvent) => {
+    // 用 requestAnimationFrame 把 mousemove 收敛到每帧一次，避免高频重渲染导致卡顿
+    let rafId = 0;
+    let lastEv: MouseEvent | null = null;
+    const apply = () => {
+      rafId = 0;
       const d = dragStateRef.current;
-      if (!d) return;
+      const ev = lastEv;
+      lastEv = null;
+      if (!d || !ev) return;
       let size: number;
       if (d.which === 'chat') size = Math.min(900, Math.max(280, window.innerWidth - ev.clientX));
       else if (d.which === 'sidebar') size = Math.min(520, Math.max(200, ev.clientX));
@@ -100,7 +106,13 @@ export default function App() {
       else if (d.which === 'sidebar') setSidebarWidth(size);
       else setOutputHeight(size);
     };
+    const onMove = (ev: MouseEvent) => {
+      lastEv = ev;
+      if (rafId) return;
+      rafId = requestAnimationFrame(apply);
+    };
     const onUp = () => {
+      if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
       document.body.classList.remove('resizing');

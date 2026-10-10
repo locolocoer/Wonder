@@ -161,6 +161,15 @@ function registerIpc() {
     return { ok: true };
   });
   ipcMain.handle('win:is-maximized', () => (mainWindow ? mainWindow.isMaximized() : false));
+  ipcMain.handle('ui:set-zoom', (_e, factor) => {
+    const f = Number(factor);
+    if (!mainWindow || mainWindow.isDestroyed()) return { ok: false };
+    if (Number.isFinite(f) && f > 0 && f <= 2) {
+      mainWindow.webContents.setZoomFactor(f);
+      return { ok: true };
+    }
+    return { ok: false };
+  });
   ipcMain.handle('app:close-now', () => {
     allowClose = true;
     if (mainWindow) mainWindow.close();

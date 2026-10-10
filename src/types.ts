@@ -199,6 +199,7 @@ declare global {
       winToggleMaximize(): Promise<{ ok: boolean }>;
       winClose(): Promise<{ ok: boolean }>;
       winIsMaximized(): Promise<boolean>;
+      setZoom(factor: number): Promise<{ ok: boolean }>;
       closeNow(): Promise<{ ok: boolean }>;
       aiChat(payload: { requestId: string; apiKey: string; baseUrl: string; model: string; temperature: number; messages: any[] }): Promise<{ ok: boolean; content?: string; reasoning?: string; error?: string; aborted?: boolean }>;
       aiAbort(id: string): Promise<{ ok: boolean }>;
