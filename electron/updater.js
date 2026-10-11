@@ -1,5 +1,4 @@
 'use strict';
-const { autoUpdater } = require('electron-updater');
 const { app } = require('electron');
 
 // 更新源：默认阿里云 OSS（fryappstore 桶下的 wonder 目录），
@@ -11,6 +10,14 @@ const GH_REPO = 'Wonder';
 
 let mainWindow = null;
 let currentFeed = 'mirror';
+let _autoUpdater = null;
+
+// 懒加载 autoUpdater：electron-updater 在模块加载期访问 app 会因 app 未就绪而报错，
+// 必须推迟到首次实际使用时（setup/check 在 app ready 之后才被调用）。
+function getAutoUpdater() {
+  if (!_autoUpdater) _autoUpdater = require('electron-updater').autoUpdater;
+  return _autoUpdater;
+}
 
 function setWindow(win) {
   mainWindow = win;
@@ -22,16 +29,17 @@ function send(status) {
 
 function useMirror() {
   currentFeed = 'mirror';
-  autoUpdater.setFeedURL({ provider: 'generic', url: UPDATE_MIRROR });
+  getAutoUpdater().setFeedURL({ provider: 'generic', url: UPDATE_MIRROR });
 }
 
 function useGithub() {
   currentFeed = 'github';
-  autoUpdater.setFeedURL({ provider: 'github', owner: GH_OWNER, repo: GH_REPO });
+  getAutoUpdater().setFeedURL({ provider: 'github', owner: GH_OWNER, repo: GH_REPO });
 }
 
 function setup() {
   if (!app.isPackaged) return; // 开发模式不检查更新
+  const autoUpdater = getAutoUpdater();
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   useMirror();
@@ -46,7 +54,7 @@ function setup() {
     if (currentFeed === 'mirror') {
       // OSS 源失败 → 回退 GitHub Releases
       useGithub();
-      autoUpdater.checkForUpdates().catch(() => send({ state: 'error', message: msg }));
+      getAutoUpdater().checkForUpdates().catch(() => send({ state: 'error', message: msg }));
       return;
     }
     send({ state: 'error', message: msg });
@@ -59,12 +67,12 @@ function check() {
     return;
   }
   useMirror();
-  autoUpdater.checkForUpdates().catch((e) => send({ state: 'error', message: String((e && e.message) || e) }));
+  getAutoUpdater().checkForUpdates().catch((e) => send({ state: 'error', message: String((e && e.message) || e) }));
 }
 
 function install() {
   if (!app.isPackaged) return;
-  setImmediate(() => autoUpdater.quitAndInstall());
+  setImmediate(() => getAutoUpdater().quitAndInstall());
 }
 
 module.exports = { setup, check, install, setWindow };
