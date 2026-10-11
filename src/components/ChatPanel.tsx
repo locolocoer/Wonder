@@ -73,8 +73,8 @@ export const ChatPanel = React.memo(function ChatPanel({
     const isDir = node.type === 'dir';
     const isOpen = expanded.has(node.path);
     const isChecked = isPathSelected(node.path, contextPaths);
-    // 由「选中目录」派生的子项不可单独取消，需先取消勾选目录
-    const derived = isChecked && !contextPaths.includes(node.path);
+    // 被某个已选中的「祖先目录」覆盖的子项，视为派生，不可单独取消（需先取消勾选该目录）
+    const derived = contextPaths.some((p) => p !== node.path && node.path.startsWith(p + '/'));
     return (
       <React.Fragment key={node.path}>
         <div
@@ -212,7 +212,7 @@ export const ChatPanel = React.memo(function ChatPanel({
                   {filter.trim() ? (
                     filtered.map((f) => {
                       const checked = isPathSelected(f.path, contextPaths);
-                      const derived = checked && !contextPaths.includes(f.path);
+                      const derived = contextPaths.some((p) => p !== f.path && f.path.startsWith(p + '/'));
                       return (
                         <div
                           key={f.path}

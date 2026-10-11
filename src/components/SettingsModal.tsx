@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import type { Settings, SsoUser, ToolchainInfo, UpdateStatus } from '../types';
 
+const UI_SCALES = ['0.85', '1', '1.15', '1.3'];
+function nearestScale(v: number): string {
+  const nums = UI_SCALES.map(Number);
+  let best = nums[0];
+  for (const x of nums) if (Math.abs(x - v) < Math.abs(best - v)) best = x;
+  return String(best);
+}
+
 export function SettingsModal({
   settings,
   toolchain,
@@ -30,7 +38,7 @@ export function SettingsModal({
   const [asmPath, setAsmPath] = useState(settings.toolchain.asmPath);
   const [theme, setTheme] = useState(settings.theme);
   const [language, setLanguage] = useState(settings.language);
-  const [uiScale, setUiScale] = useState(String(settings.uiScale ?? 1));
+  const [uiScale, setUiScale] = useState(nearestScale(settings.uiScale ?? 1));
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
   const [ssoBusy, setSsoBusy] = useState(false);
 

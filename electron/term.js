@@ -177,7 +177,9 @@ function createTermSession({ cwd, gccBin, send }) {
     // Windows 下 cmd.exe /c <cmd> 的子进程是孙进程，child.kill() 杀不掉；用 taskkill /T 杀整棵树
     if (process.platform === 'win32' && child.pid) {
       try {
-        spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
+        const tk = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
+        tk.on('error', () => { /* taskkill 不可用时忽略，下面仍尝试 child.kill() */ });
+        tk.unref();
       } catch {
         /* ignore */
       }

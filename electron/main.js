@@ -277,7 +277,8 @@ function registerIpc() {
 
   ipcMain.handle('settings:get', () => settings);
   ipcMain.handle('settings:set', (_e, patch) => {
-    settings = { ...settings, ...patch, toolchain: { ...settings.toolchain, ...(patch.toolchain || {}) } };
+    const p = patch && typeof patch === 'object' ? patch : {};
+    settings = { ...settings, ...p, toolchain: { ...settings.toolchain, ...(p.toolchain || {}) } };
     settingsStore.saveSettings(app, settings);
     return settings;
   });
@@ -297,10 +298,12 @@ function registerIpc() {
     const cfg = ssoConfig;
     const r = await sso.startLogin(cfg, mainWindow);
     if (r.ok) {
+      const expiresIn = (r.tokens && r.tokens.expires_in) ? r.tokens.expires_in : 3600;
       sso.saveSession(app, {
         user: r.user,
         tokens: r.tokens,
-        expiresAt: r.tokens && r.tokens.expires_in ? Date.now() + r.tokens.expires_in * 1000 : 0,
+        // 缺少 expires_in 时按 1 小时兜底，避免误判为「永不过期」
+        expiresAt: Date.now() + expiresIn * 1000,
       });
       return { ok: true, user: r.user };
     }
@@ -458,6 +461,7 @@ function registerIpc() {
   });
 
   ipcMain.handle('build:run', async (_e, payload) => {
+    if (!settings.projectDir) return { ok: false, error: '请先选择工程目录', results: [] };
     if (buildInProgress) return { ok: false, error: '编译正在进行中，请稍候', results: [] };
     buildInProgress = true;
     buildAbort = null;

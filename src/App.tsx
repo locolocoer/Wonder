@@ -80,6 +80,7 @@ export default function App() {
   const outputStyle = useMemo(() => ({ height: outputHeight }), [outputHeight]);
 
   const requestIdRef = useRef<string | null>(null);
+  const buildRunningRef = useRef(false);
 
   const startDrag = (which: 'chat' | 'sidebar' | 'output') => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -91,20 +92,26 @@ export default function App() {
     // 用 requestAnimationFrame 把 mousemove 收敛到每帧一次，避免高频重渲染导致卡顿
     let rafId = 0;
     let lastEv: MouseEvent | null = null;
+    const computeSize = (d: { which: 'chat' | 'sidebar' | 'output' }, ev: MouseEvent): number => {
+      if (d.which === 'chat') return Math.min(900, Math.max(280, window.innerWidth - ev.clientX));
+      if (d.which === 'sidebar') return Math.min(520, Math.max(200, ev.clientX));
+      return Math.min(Math.max(120, window.innerHeight - 220), Math.max(100, window.innerHeight - ev.clientY));
+    };
+    const applySize = (size: number) => {
+      const d = dragStateRef.current;
+      if (!d) return;
+      dragStateRef.current = { ...d, size };
+      if (d.which === 'chat') setChatWidth(size);
+      else if (d.which === 'sidebar') setSidebarWidth(size);
+      else setOutputHeight(size);
+    };
     const apply = () => {
       rafId = 0;
       const d = dragStateRef.current;
       const ev = lastEv;
       lastEv = null;
       if (!d || !ev) return;
-      let size: number;
-      if (d.which === 'chat') size = Math.min(900, Math.max(280, window.innerWidth - ev.clientX));
-      else if (d.which === 'sidebar') size = Math.min(520, Math.max(200, ev.clientX));
-      else size = Math.min(Math.max(120, window.innerHeight - 220), Math.max(100, window.innerHeight - ev.clientY));
-      dragStateRef.current = { ...d, size };
-      if (d.which === 'chat') setChatWidth(size);
-      else if (d.which === 'sidebar') setSidebarWidth(size);
-      else setOutputHeight(size);
+      applySize(computeSize(d, ev));
     };
     const onMove = (ev: MouseEvent) => {
       lastEv = ev;
@@ -113,8 +120,15 @@ export default function App() {
     };
     const onUp = () => {
       if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+      // 还有未处理的最后一段移动时，立即应用，避免最后一帧位置丢失
+      if (lastEv && dragStateRef.current) {
+        applySize(computeSize(dragStateRef.current, lastEv));
+        lastEv = null;
+      }
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('blur', onUp);
       document.body.classList.remove('resizing');
       document.body.style.cursor = '';
       const d = dragStateRef.current;
@@ -126,6 +140,7 @@ export default function App() {
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
+    window.addEventListener('blur', onUp); // 窗口失焦/鼠标在窗外松开时的兜底清理
     document.body.classList.add('resizing');
     document.body.style.cursor = isRow ? 'row-resize' : 'col-resize';
   };
@@ -250,7 +265,9 @@ export default function App() {
       }
       const r = await window.api.projectRead(path);
       if (!r.ok) return;
-      setTabs((prev) => [...prev, { path, name: path.split('/').pop() || path, content: r.content || '', dirty: false }]);
+      setTabs((prev) =>
+        prev.some((t) => t.path === path) ? prev : [...prev, { path, name: path.split('/').pop() || path, content: r.content || '', dirty: false }]
+      );
       setActivePath(path);
     },
     [tabs]
@@ -362,6 +379,7 @@ export default function App() {
     setSettings((s) => (s ? { ...s, projectDir: res.projectDir! } : s));
     setTabs([]);
     setActivePath('');
+    clearContext(); // 切换工程后清掉旧工程的 AI 上下文选择
     await loadFiles();
   };
 
@@ -433,6 +451,15 @@ export default function App() {
   };
 
   const deleteFile = async (path: string) => {
+    const dirtyUnder = tabs.filter((t) => t.dirty && (t.path === path || t.path.startsWith(path + '/')));
+    if (dirtyUnder.length) {
+      const ok = await window.api.dialogConfirm({
+        message: `要删除的路径下有 ${dirtyUnder.length} 个未保存的文件（${dirtyUnder.slice(0, 5).map((t) => t.path).join('、')}${dirtyUnder.length > 5 ? '…' : ''}），删除将丢失这些修改。确定删除吗？`,
+        title: '删除',
+        type: 'warning',
+      });
+      if (!ok) return;
+    }
     const r = await window.api.projectDelete(path);
     if (!r.ok) {
       await window.api.dialogMessage({ type: 'error', message: r.error || '操作失败' });
@@ -444,10 +471,13 @@ export default function App() {
   };
 
   // 磁盘内容被外部改动（Git 回滚、重命名等）后：刷新文件树，并重读所有已打开标签。
-  const onProjectChanged = useCallback(async () => {
+  // 可传入重映射后的 tabs/activePath（用于重命名场景，避免按旧路径读不到而丢标签）。
+  const onProjectChanged = useCallback(async (tabsOverride?: FileTab[], activeOverride?: string) => {
     await loadFiles();
+    const src = tabsOverride || tabs;
+    const act = activeOverride !== undefined ? activeOverride : activePath;
     const next: FileTab[] = [];
-    for (const t of tabs) {
+    for (const t of src) {
       // 只读标签（参考答案/头文件）是快照，路径可能不在工程内，直接保留不重读
       if (t.readOnly) {
         next.push(t);
@@ -457,7 +487,7 @@ export default function App() {
       if (r.ok) next.push({ ...t, content: r.content || '', dirty: false });
     }
     setTabs(next);
-    if (activePath && !next.some((t) => t.path === activePath)) {
+    if (act && !next.some((t) => t.path === act)) {
       setActivePath(next.length ? next[next.length - 1].path : '');
     }
   }, [tabs, loadFiles, activePath]);
@@ -469,7 +499,16 @@ export default function App() {
       await window.api.dialogMessage({ type: 'error', message: r.error || '重命名失败' });
       return;
     }
-    await onProjectChanged();
+    // 重命名后先重映射已打开标签的路径，再交给 onProjectChanged 重读，避免旧路径读不到而丢标签
+    const newPath = path.includes('/') ? path.slice(0, path.lastIndexOf('/') + 1) + newName : newName;
+    const remapped = tabs.map((t) => {
+      if (t.path === path) return { ...t, path: newPath, name: newName };
+      if (t.path.startsWith(path + '/')) return { ...t, path: newPath + t.path.slice(path.length) };
+      return t;
+    });
+    const remappedActive =
+      activePath === path ? newPath : activePath.startsWith(path + '/') ? newPath + activePath.slice(path.length) : activePath;
+    await onProjectChanged(remapped, remappedActive);
   };
 
   // ---- stage progress -----------------------------------------------------
@@ -531,9 +570,14 @@ export default function App() {
 
   const runBuild = async (scope?: 'stage' | 'all') => {
     if (!settings || !settings.projectDir) return;
+    if (buildRunningRef.current) return; // 防止并发编译（Ctrl+B 或连点）
+    buildRunningRef.current = true;
     await saveAll();
     const stage = findStage(currentStageId);
-    if (!stage) return;
+    if (!stage) {
+      buildRunningRef.current = false;
+      return;
+    }
     // 防止 onClick 直接把事件对象当参数传进来：只有显式传 'all' 才是全量，其余一律视为本阶段。
     const effectiveScope = scope === 'all' ? 'all' : 'stage';
     setBuildScope(effectiveScope);
@@ -548,6 +592,7 @@ export default function App() {
         recordStagePass(currentStageId);
       }
     } finally {
+      buildRunningRef.current = false;
       setBuildRunning(false);
     }
   };
@@ -617,6 +662,8 @@ export default function App() {
       setShowSettings(true);
       return;
     }
+    const baseId = `ai-${Date.now()}`;
+    requestIdRef.current = baseId; // 在任何 await 之前同步占位，防止快速连点触发并发请求
     await saveAll();
     const stage = findStage(currentStageId);
     const ctx = await collectProjectContext();
@@ -633,14 +680,12 @@ export default function App() {
     }
     const msgs = buildMessages(mode, stage, ctx, buildResult, settings.language, text, history);
 
-    const baseId = `ai-${Date.now()}`;
     const userLabel = text && text.trim() ? text.trim() : MODE_LABELS[mode];
     setMessages((prev) => [...prev, { id: baseId + '-u', role: 'user', content: userLabel }]);
     setMessages((prev) => [
       ...prev,
       { id: baseId, role: 'assistant', content: '', reasoning: '', mode, streaming: true },
     ]);
-    requestIdRef.current = baseId;
     setStreaming(true);
 
     try {

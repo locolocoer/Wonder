@@ -89,7 +89,8 @@ function langFor(path: string): string {
   if (/\.(cpp|cc|cxx|hpp)$/.test(lower)) return 'cpp';
   if (/\.(c|h)$/.test(lower)) return 'c';
   if (lower.endsWith('makefile')) return 'makefile';
-  if (/\.(bat|sh)$/.test(lower)) return 'bash';
+  if (/\.bat$/.test(lower)) return 'bat';
+  if (/\.sh$/.test(lower)) return 'bash';
   if (/\.md$/.test(lower)) return 'markdown';
   return '';
 }
@@ -97,20 +98,26 @@ function langFor(path: string): string {
 function filesBlock(contents: Record<string, string>): string {
   const entries = Object.entries(contents);
   if (!entries.length) return '（学生尚未编写任何源码文件）';
-  // 硬性总预算：累计不超 totalBudget，避免超出 DeepSeek 上下文；单个文件尽量完整带上，不按均分截断。
+  // 硬性总预算：按「整条条目（含 Markdown 围栏/标题）」累计，避免超出 DeepSeek 上下文。
   const totalBudget = 90000;
   let remaining = totalBudget;
   const parts: string[] = [];
-  for (const [path, content] of entries) {
+  for (let i = 0; i < entries.length; i++) {
+    const [path, content] = entries[i];
     const lang = langFor(path);
-    const take = Math.min(remaining, content.length);
-    if (take < content.length) {
-      parts.push(`### 文件 ${path}\n\`\`\`${lang}\n${content.slice(0, take)}\n\`\`\`\n<!-- 该文件已截断，剩余 ${content.length - take} 字符未包含 -->`);
+    const entry = `### 文件 ${path}\n\`\`\`${lang}\n${content}\n\`\`\``;
+    if (entry.length <= remaining) {
+      parts.push(entry);
+      remaining -= entry.length;
     } else {
-      parts.push(`### 文件 ${path}\n\`\`\`${lang}\n${content}\n\`\`\``);
+      const header = `### 文件 ${path}\n\`\`\`${lang}\n`;
+      const footer = '\n```';
+      const note = `\n<!-- 该文件已截断（原始 ${content.length} 字符）-->`;
+      const take = Math.max(0, remaining - header.length - footer.length - note.length);
+      parts.push(`${header}${content.slice(0, take)}${footer}${note}`);
+      remaining = 0;
     }
-    remaining -= take;
-    if (remaining <= 0) {
+    if (remaining <= 0 && i < entries.length - 1) {
       parts.push('（其余文件因上下文预算已省略）');
       break;
     }

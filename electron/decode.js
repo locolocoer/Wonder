@@ -17,33 +17,33 @@ function decodeOutput(buf) {
   }
 }
 
-// 流式解码器：跨 chunk 保持状态，避免多字节字符被 50ms 防抖边界切断；
-// 一旦发现非法 UTF-8，整体回退到 GBK 并只补发此前未输出的部分。
+// 流式解码器：跨 chunk 保持状态，避免多字节字符被 50ms 防抖边界切断。
+// 纯 ASCII 直接透传（UTF-8 与 GBK 下一致）；一旦出现非 ASCII 字节，用严格 UTF-8 判定编码，
+// 之后用持久 TextDecoder 流式解码，无回溯重解、无无限缓冲。
 function createStreamDecoder() {
-  const utf8 = new TextDecoder('utf-8', { fatal: true });
-  let gbk = null;
-  let buf = Buffer.alloc(0);
-  let emitted = 0;
+  let decoder = null;
 
   function push(chunk) {
     if (!chunk || !chunk.length) return '';
-    buf = Buffer.concat([buf, chunk]);
-    if (!gbk) {
-      try {
-        const text = utf8.decode(chunk, { stream: true });
-        emitted += text.length;
-        return text;
-      } catch {
-        gbk = new TextDecoder('gbk');
-        const full = gbk.decode(buf, { stream: true });
-        const tail = full.slice(emitted);
-        emitted = full.length;
-        return tail;
+    if (!decoder) {
+      let ascii = true;
+      for (let i = 0; i < chunk.length; i++) {
+        if (chunk[i] > 0x7f) {
+          ascii = false;
+          break;
+        }
       }
+      if (ascii) return chunk.toString('utf8');
+      let enc = 'utf-8';
+      try {
+        new TextDecoder('utf-8', { fatal: true }).decode(chunk, { stream: true });
+      } catch {
+        enc = 'gbk';
+      }
+      decoder = new TextDecoder(enc);
+      return decoder.decode(chunk, { stream: true });
     }
-    const text = gbk.decode(chunk, { stream: true });
-    emitted += text.length;
-    return text;
+    return decoder.decode(chunk, { stream: true });
   }
 
   return { push };

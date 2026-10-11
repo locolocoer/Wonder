@@ -95,11 +95,11 @@ export function Sidebar({
                 </button>
                 {active && (
                   <div className="stage-body">
-                    <p>{s.summary}</p>
+                    <p>{localizeText(s.summary, language)}</p>
                     <h4>任务目标</h4>
                     <ul>
                       {s.goals.map((g, i) => (
-                        <li key={i}>{g}</li>
+                        <li key={i}>{localizeText(g, language)}</li>
                       ))}
                     </ul>
                     {s.files && s.files.length > 0 && (
@@ -122,17 +122,17 @@ export function Sidebar({
                         )}
                         <ul className="stage-background">
                           {s.background.map((b, i) => (
-                            <li key={i}>{b}</li>
+                            <li key={i}>{localizeText(b, language)}</li>
                           ))}
                         </ul>
                       </>
                     )}
                     <h4>接口契约</h4>
-                    <div className="contract">{s.contract}</div>
+                    <div className="contract">{localizeText(s.contract, language)}</div>
                     <h4>验收标准</h4>
                     <ul>
                       {s.acceptance.map((a, i) => (
-                        <li key={i}>{a}</li>
+                        <li key={i}>{localizeText(a, language)}</li>
                       ))}
                     </ul>
                     {s.hints && s.hints.length > 0 && (
@@ -140,7 +140,7 @@ export function Sidebar({
                         <h4>提示</h4>
                         <ul>
                           {s.hints.map((h, i) => (
-                            <li key={i}>{h}</li>
+                            <li key={i}>{localizeText(h, language)}</li>
                           ))}
                         </ul>
                       </>

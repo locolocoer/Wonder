@@ -911,15 +911,9 @@ const CXX_DOCS: Record<string, CDocEntry> = {
   },
 };
 
-/** 供应用内文档面板查询函数说明。未收录的 std:: 符号给一个通用兜底（跳到 cppreference 搜索）。 */
+/** 供应用内文档面板查询函数说明。未收录则返回 undefined，由调用方提示「未找到」。 */
 export function getCDoc(name: string): CDocEntry | undefined {
-  const d = DOCS[name] || CXX_DOCS[name];
-  if (d) return d;
-  return {
-    sig: `std::${name};`,
-    desc: '标准库符号（暂未收录详细中文说明）。点击下方按钮在 cppreference 查看完整文档。',
-    url: 'https://zh.cppreference.com/w/cpp?search=' + encodeURIComponent(name),
-  };
+  return DOCS[name] || CXX_DOCS[name];
 }
 
 // C 关键字（用于代码补全）
@@ -930,10 +924,10 @@ const C_KEYWORDS: string[] = [
   'static', 'struct', 'switch', 'typedef', 'union', 'unsigned', 'void', 'volatile', 'while',
 ];
 
-// C++ 关键字（代码补全用）
+// C++ 关键字（代码补全用；不含已在 C_KEYWORDS 里的 auto，避免重复）
 const CXX_KEYWORDS: string[] = [
   'class', 'namespace', 'using', 'template', 'typename', 'public', 'private',
-  'protected', 'virtual', 'override', 'constexpr', 'auto', 'new', 'delete',
+  'protected', 'virtual', 'override', 'constexpr', 'new', 'delete',
   'nullptr', 'true', 'false', 'this', 'try', 'catch', 'throw', 'friend', 'operator',
 ];
 
@@ -943,7 +937,7 @@ export function registerCDocs(): void {
   if (registered) return;
   registered = true;
 
-  const makeHover = (docs: Record<string, CDocEntry>): monaco.languages.HoverProvider => ({
+  const makeHover = (docs: Record<string, CDocEntry>, bareOk: Set<string>): monaco.languages.HoverProvider => ({
     provideHover(model, position) {
       const word = model.getWordAtPosition(position);
       if (!word) return null;
@@ -951,7 +945,8 @@ export function registerCDocs(): void {
       const before = line.slice(0, word.startColumn - 1);
       const isStd = before.endsWith('std::');
       const d = docs[word.word];
-      if (!d && !isStd) return null;
+      // 裸名只允许 C 标准库函数；C++ 成员需 std:: 前缀，避免误判用户同名标识符（如 size/count/read）
+      if (!isStd && !bareOk.has(word.word)) return null;
       const value = d
         ? `\`\`\`c\n${d.sig}\n\`\`\`\n\n${d.desc}\n\n*按住 Ctrl 点击可在应用内查看文档*`
         : `\`std::${word.word}\` 是标准库符号。\n\n*按住 Ctrl 点击可在应用内查看文档 / 跳转 cppreference*`;
@@ -962,7 +957,7 @@ export function registerCDocs(): void {
     },
   });
 
-  const makeDefinition = (docs: Record<string, CDocEntry>): monaco.languages.DefinitionProvider => ({
+  const makeDefinition = (docs: Record<string, CDocEntry>, bareOk: Set<string>): monaco.languages.DefinitionProvider => ({
     provideDefinition(model, position) {
       const word = model.getWordAtPosition(position);
       if (!word) return null;
@@ -971,7 +966,7 @@ export function registerCDocs(): void {
       if (/^\s*#\s*include\b/.test(line)) return null;
       const before = line.slice(0, word.startColumn - 1);
       const isStd = before.endsWith('std::');
-      if (!docs[word.word] && !isStd) return null;
+      if (!isStd && !bareOk.has(word.word)) return null;
       return {
         uri: monaco.Uri.from({ scheme: 'wonder-doc', path: '/' + word.word }),
         range: new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn),
@@ -1031,11 +1026,13 @@ export function registerCDocs(): void {
   const cppDocs = { ...DOCS, ...CXX_DOCS };
   const cKeywords = C_KEYWORDS;
   const cppKeywords = [...C_KEYWORDS, ...CXX_KEYWORDS];
+  // 允许「裸名」匹配的只有 C 标准库函数；C++ 成员需 std:: 前缀
+  const bareOk = new Set(Object.keys(DOCS));
 
-  monaco.languages.registerHoverProvider('c', makeHover(cDocs));
-  monaco.languages.registerHoverProvider('cpp', makeHover(cppDocs));
-  monaco.languages.registerDefinitionProvider('c', makeDefinition(cDocs));
-  monaco.languages.registerDefinitionProvider('cpp', makeDefinition(cppDocs));
+  monaco.languages.registerHoverProvider('c', makeHover(cDocs, bareOk));
+  monaco.languages.registerHoverProvider('cpp', makeHover(cppDocs, bareOk));
+  monaco.languages.registerDefinitionProvider('c', makeDefinition(cDocs, bareOk));
+  monaco.languages.registerDefinitionProvider('cpp', makeDefinition(cppDocs, bareOk));
   monaco.languages.registerDefinitionProvider('c', headerProvider);
   monaco.languages.registerDefinitionProvider('cpp', headerProvider);
   monaco.languages.registerCompletionItemProvider('c', makeCompletion(cKeywords, cDocs));

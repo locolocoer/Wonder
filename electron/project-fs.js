@@ -23,11 +23,31 @@ function isInside(root, target) {
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
+function realpathSafe(p) {
+  try {
+    return fs.realpathSync(p);
+  } catch {
+    return null;
+  }
+}
+
 function resolveSafe(projectDir, rel) {
   const root = path.resolve(projectDir);
   const target = path.resolve(root, rel || '.');
   if (!isInside(root, target)) {
     throw new Error(`路径越界：${rel}`);
+  }
+  // 防御符号链接逃逸：真实路径（跟随 symlink）必须仍位于工程目录内
+  const realRoot = realpathSafe(root) || root;
+  const realTarget = realpathSafe(target);
+  if (realTarget) {
+    if (!isInside(realRoot, realTarget)) throw new Error(`路径越界：${rel}`);
+  } else {
+    // target 不存在（写/创建场景）：校验最近存在的父目录的真实路径
+    let p = path.dirname(target);
+    while (!realpathSafe(p) && p !== path.dirname(p)) p = path.dirname(p);
+    const rp = realpathSafe(p);
+    if (rp && !isInside(realRoot, rp)) throw new Error(`路径越界：${rel}`);
   }
   return target;
 }

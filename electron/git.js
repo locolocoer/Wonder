@@ -95,7 +95,8 @@ async function diff(projectDir, rel) {
   const args = ['diff', '--no-color'];
   if (rel) args.push('--', rel);
   const r = await runGit(projectDir, args);
-  // git diff 对无差异返回 code 0 且输出为空；code 非 0 通常表示有差异（git 用 1 表示存在差异）
+  // git diff：0=无差异，1=有差异；其它 code（如 128 路径错误）才是错误
+  if (r.code !== 0 && r.code !== 1) return { ok: false, error: r.stderr || r.stdout, notFound: r.notFound };
   return { ok: true, diff: r.stdout, notFound: r.notFound };
 }
 

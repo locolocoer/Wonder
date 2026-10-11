@@ -2,7 +2,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, safeStorage } = require('electron');
 
 // ---- PKCE / 工具 -------------------------------------------------------------
 function b64url(input) {
@@ -134,8 +134,19 @@ async function startLogin(config, parentWindow) {
       resolve(r);
     };
 
+    // 精确匹配回调地址的 origin + pathname，避免前缀匹配误判
+    const cb = new URL(redirectUri);
+    const isCallback = (url) => {
+      try {
+        const u = new URL(url);
+        return u.origin === cb.origin && u.pathname === cb.pathname;
+      } catch {
+        return false;
+      }
+    };
+
     const handleRedirect = async (url) => {
-      if (!url.startsWith(redirectUri)) return;
+      if (!isCallback(url)) return;
       let u;
       try {
         u = new URL(url);
@@ -172,13 +183,13 @@ async function startLogin(config, parentWindow) {
     };
 
     win.webContents.on('will-redirect', (e, url) => {
-      if (url.startsWith(redirectUri)) {
+      if (isCallback(url)) {
         e.preventDefault();
         handleRedirect(url);
       }
     });
     win.webContents.on('did-navigate', (_e, url) => {
-      if (url.startsWith(redirectUri)) handleRedirect(url);
+      if (isCallback(url)) handleRedirect(url);
     });
     // 真正的加载失败（DNS、连接被拒等）才报错；ERR_ABORTED (-3) 是重定向过程中的正常中断，忽略
     win.webContents.on('did-fail-load', (_e, code, desc) => {
@@ -203,7 +214,16 @@ function storePath(app) {
 function loadSession(app) {
   try {
     const raw = fs.readFileSync(storePath(app), 'utf8');
-    const s = JSON.parse(raw);
+    let data = raw;
+    // 优先用 safeStorage 解密；不可用或解密失败（旧版明文）则按原样解析
+    if (safeStorage.isEncryptionAvailable()) {
+      try {
+        data = safeStorage.decryptString(Buffer.from(raw, 'base64'));
+      } catch {
+        data = raw;
+      }
+    }
+    const s = JSON.parse(data);
     if (s && s.user) {
       if (s.expiresAt && Date.now() > s.expiresAt) return null; // 已过期
       return s;
@@ -215,7 +235,13 @@ function loadSession(app) {
 }
 function saveSession(app, session) {
   fs.mkdirSync(app.getPath('userData'), { recursive: true });
-  fs.writeFileSync(storePath(app), JSON.stringify(session, null, 2), 'utf8');
+  const data = JSON.stringify(session, null, 2);
+  // 令牌落盘前加密，降低凭据泄露风险
+  let payload = data;
+  if (safeStorage.isEncryptionAvailable()) {
+    payload = safeStorage.encryptString(data).toString('base64');
+  }
+  fs.writeFileSync(storePath(app), payload, 'utf8');
 }
 function clearSession(app) {
   try {
