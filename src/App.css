@@ -246,7 +246,7 @@ button {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  min-width: 320px; /* 中间编辑区最小宽度，避免被左右面板挤没 */
   min-height: 0;
 }
 

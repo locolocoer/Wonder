@@ -85,6 +85,12 @@ export default function App() {
 
   const requestIdRef = useRef<string | null>(null);
   const buildRunningRef = useRef(false);
+  // 始终反映最新的左右面板宽度，供拖拽时计算「中间编辑区最小宽度」约束
+  const sizesRef = useRef({ chat: chatWidth, sidebar: sidebarWidth });
+  sizesRef.current = { chat: chatWidth, sidebar: sidebarWidth };
+
+  const MIN_CENTER_W = 320; // 中间编辑区最小宽度
+  const DIVIDERS_W = 10; // 两个竖直分隔条
 
   const startDrag = (which: 'chat' | 'sidebar' | 'output') => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -97,8 +103,16 @@ export default function App() {
     let rafId = 0;
     let lastEv: MouseEvent | null = null;
     const computeSize = (d: { which: 'chat' | 'sidebar' | 'output' }, ev: MouseEvent): number => {
-      if (d.which === 'chat') return Math.min(900, Math.max(280, window.innerWidth - ev.clientX));
-      if (d.which === 'sidebar') return Math.min(520, Math.max(200, ev.clientX));
+      if (d.which === 'chat') {
+        const raw = Math.min(900, Math.max(280, window.innerWidth - ev.clientX));
+        const maxForCenter = window.innerWidth - DIVIDERS_W - MIN_CENTER_W - sizesRef.current.sidebar;
+        return Math.min(raw, Math.max(0, maxForCenter));
+      }
+      if (d.which === 'sidebar') {
+        const raw = Math.min(520, Math.max(200, ev.clientX));
+        const maxForCenter = window.innerWidth - DIVIDERS_W - MIN_CENTER_W - sizesRef.current.chat;
+        return Math.min(raw, Math.max(0, maxForCenter));
+      }
       return Math.min(Math.max(120, window.innerHeight - 220), Math.max(100, window.innerHeight - ev.clientY));
     };
     const applySize = (size: number) => {
@@ -148,6 +162,19 @@ export default function App() {
     document.body.classList.add('resizing');
     document.body.style.cursor = isRow ? 'row-resize' : 'col-resize';
   };
+
+  // 启动时若持久化的左右面板宽度把中间编辑区挤没了，按比例压缩两侧，保证中间至少 MIN_CENTER_W
+  useEffect(() => {
+    const budget = window.innerWidth - DIVIDERS_W - MIN_CENTER_W;
+    if (budget <= 0) return;
+    const total = sidebarWidth + chatWidth;
+    if (total > budget) {
+      const scale = budget / total;
+      setSidebarWidth(Math.max(160, Math.round(sidebarWidth * scale)));
+      setChatWidth(Math.max(160, Math.round(chatWidth * scale)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ---- bootstrap ----------------------------------------------------------
   useEffect(() => {
