@@ -10,7 +10,7 @@ import type {
   BuildLogEntry,
   SsoUser,
 } from './types';
-import { CURRICULUM, findStage } from './lib/curriculum';
+import { COURSES, findStage, getCourse } from './lib/curriculum';
 import { buildMessages, MODE_LABELS, type AiMode, type ProjectContext } from './lib/ai-prompts';
 import { Toolbar } from './components/Toolbar';
 import { Sidebar } from './components/Sidebar';
@@ -27,6 +27,10 @@ export default function App() {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [tabs, setTabs] = useState<FileTab[]>([]);
   const [activePath, setActivePath] = useState('');
+  const [currentCourseId, setCurrentCourseId] = useState(() => {
+    const v = localStorage.getItem('cc-course');
+    return v && COURSES.some((c) => c.id === v) ? v : COURSES[0].id;
+  });
   const [currentStageId, setCurrentStageId] = useState('stage1');
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -384,6 +388,10 @@ export default function App() {
   };
 
   const initStarter = async () => {
+    if (!getCourse(currentCourseId).available) {
+      await window.api.dialogMessage({ message: '这门课程即将上线，暂无起始模板。可先切回「C 编译器」开始练习。' });
+      return;
+    }
     if (!settings?.projectDir) {
       const res = await window.api.chooseProject();
       if (res.canceled || !res.projectDir) return;
@@ -409,6 +417,10 @@ export default function App() {
   }, []);
 
   const openReference = async () => {
+    if (!getCourse(currentCourseId).available) {
+      await window.api.dialogMessage({ message: '这门课程即将上线，暂无参考答案。可先切回「C 编译器」开始练习。' });
+      return;
+    }
     const r = await window.api.readReference();
     if (!r.ok) {
       await window.api.dialogMessage({ type: 'error', message: r.error || '读取失败' });
@@ -511,7 +523,17 @@ export default function App() {
     await onProjectChanged(remapped, remappedActive);
   };
 
-  // ---- stage progress -----------------------------------------------------
+  // ---- course / stage ------------------------------------------------------
+  const selectCourse = (courseId: string) => {
+    const c = getCourse(courseId);
+    setCurrentCourseId(c.id);
+    localStorage.setItem('cc-course', c.id);
+    // 切课程后回到该课程的第一个阶段
+    const firstStage = c.stages[0]?.id || '';
+    setCurrentStageId(firstStage);
+    if (firstStage) localStorage.setItem('cc-stage', firstStage);
+  };
+
   const selectStage = (id: string) => {
     setCurrentStageId(id);
     localStorage.setItem('cc-stage', id);
@@ -573,7 +595,7 @@ export default function App() {
     if (buildRunningRef.current) return; // 防止并发编译（Ctrl+B 或连点）
     buildRunningRef.current = true;
     await saveAll();
-    const stage = findStage(currentStageId);
+    const stage = findStage(currentCourseId, currentStageId);
     if (!stage) {
       buildRunningRef.current = false;
       return;
@@ -585,7 +607,7 @@ export default function App() {
     setLogs([]);
     setBuildResult(null);
     try {
-      const testCases = effectiveScope === 'all' ? CURRICULUM.flatMap((s) => s.testCases) : stage.testCases;
+      const testCases = effectiveScope === 'all' ? getCourse(currentCourseId).stages.flatMap((s) => s.testCases) : stage.testCases;
       const res = await window.api.buildRun({ testCases, ccPath: settings.toolchain.ccPath, language: settings.language });
       setBuildResult(res);
       if (res.ok && res.failCount === 0 && res.total > 0 && effectiveScope === 'stage') {
@@ -665,7 +687,7 @@ export default function App() {
     const baseId = `ai-${Date.now()}`;
     requestIdRef.current = baseId; // 在任何 await 之前同步占位，防止快速连点触发并发请求
     await saveAll();
-    const stage = findStage(currentStageId);
+    const stage = findStage(currentCourseId, currentStageId);
     const ctx = await collectProjectContext();
     // 携带最近几轮对话历史，让 AI 有上下文记忆（限制总长度，避免超出上下文）。
     let budget = 30000;
@@ -800,7 +822,11 @@ export default function App() {
         <Sidebar
           style={{ width: sidebarWidth }}
           projectDir={settings.projectDir}
-          stages={CURRICULUM}
+          stages={getCourse(currentCourseId).stages}
+          intro={getCourse(currentCourseId).intro}
+          courses={COURSES}
+          currentCourseId={currentCourseId}
+          onSelectCourse={selectCourse}
           currentStageId={currentStageId}
           completedIds={completedIds}
           files={files}

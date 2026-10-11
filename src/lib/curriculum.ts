@@ -415,8 +415,54 @@ export const CURRICULUM: Stage[] = [
   },
 ];
 
-export function findStage(id: string): Stage | undefined {
-  return CURRICULUM.find((s) => s.id === id);
+/** 一门训练课程：包含课程介绍、分阶段任务与是否已上线。 */
+export interface Course {
+  id: string;
+  title: string;
+  icon: string;
+  subtitle: string;
+  intro: string[];
+  stages: Stage[];
+  available: boolean;
+}
+
+/** 全部训练课程。首个（编译器）已完整可用，其余为即将上线。 */
+export const COURSES: Course[] = [
+  {
+    id: 'compiler',
+    title: 'C 编译器',
+    icon: '🧑‍💻',
+    subtitle: '从零实现一个 C 子集编译器（C → x86-64 汇编）',
+    intro: PROJECT_INTRO,
+    stages: CURRICULUM,
+    available: true,
+  },
+  {
+    id: 'os',
+    title: '操作系统',
+    icon: '💽',
+    subtitle: '从引导扇区到多任务内核',
+    intro: ['即将上线：带你从零写一个能启动、能调度进程的小操作系统（x86 引导扇区、中断、分页、多任务切换）。'],
+    stages: [],
+    available: false,
+  },
+  {
+    id: 'httpd',
+    title: 'HTTP 服务器',
+    icon: '🌐',
+    subtitle: '用 socket 实现一个静态 Web 服务器',
+    intro: ['即将上线：用 socket 编程实现一个能解析 HTTP 请求、返回静态文件的迷你 Web 服务器。'],
+    stages: [],
+    available: false,
+  },
+];
+
+export function getCourse(id: string): Course {
+  return COURSES.find((c) => c.id === id) || COURSES[0];
+}
+
+export function findStage(courseId: string, stageId: string): Stage | undefined {
+  return getCourse(courseId).stages.find((s) => s.id === stageId);
 }
 
 /** 根据实现语言把文件/命令说明本地化：C++ 下 .c → .cpp、gcc → g++。 */

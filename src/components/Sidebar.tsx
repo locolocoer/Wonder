@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Stage, ProjectFile } from '../types';
-import { PROJECT_INTRO, localizeText } from '../lib/curriculum';
+import { localizeText, type Course } from '../lib/curriculum';
 import { FileTree } from './FileTree';
 import { GitPanel } from './GitPanel';
 import { BasicsPanel } from './BasicsPanel';
@@ -9,6 +9,10 @@ export function Sidebar({
   style,
   projectDir,
   stages,
+  intro,
+  courses,
+  currentCourseId,
+  onSelectCourse,
   currentStageId,
   completedIds,
   files,
@@ -30,6 +34,10 @@ export function Sidebar({
   style?: React.CSSProperties;
   projectDir: string;
   stages: Stage[];
+  intro: string[];
+  courses: Course[];
+  currentCourseId: string;
+  onSelectCourse: (id: string) => void;
   currentStageId: string;
   completedIds: Set<string>;
   files: ProjectFile[];
@@ -50,6 +58,16 @@ export function Sidebar({
 }) {
   return (
     <aside className="sidebar" style={style}>
+      <div className="course-switcher">
+        <span className="course-switcher-label">课程</span>
+        <select value={currentCourseId} onChange={(e) => onSelectCourse(e.target.value)}>
+          {courses.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.icon} {c.title}{c.available ? '' : '（即将上线）'}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="sidebar-tabs">
         <button className={`sidebar-tab ${tab === 'course' ? 'active' : ''}`} onClick={() => onTabChange('course')}>
           课程路线
@@ -69,11 +87,17 @@ export function Sidebar({
           <div className="project-intro">
             <div className="project-intro-title">📖 新手必读</div>
             <ul>
-              {PROJECT_INTRO.map((line, i) => (
+              {intro.map((line, i) => (
                 <li key={i}>{line}</li>
               ))}
             </ul>
           </div>
+          {stages.length === 0 && (
+            <div className="project-intro">
+              <div className="project-intro-title">🚧 即将上线</div>
+              <p className="project-intro-hint">这门课程正在筹备中，敬请期待。可先切回「C 编译器」开始练习。</p>
+            </div>
+          )}
           {stages.map((s) => {
             const done = completedIds.has(s.id);
             const active = s.id === currentStageId;
