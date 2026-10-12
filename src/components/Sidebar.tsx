@@ -190,7 +190,7 @@ export function Sidebar({
       ) : tab === 'git' ? (
         <GitPanel projectDir={projectDir} onProjectChanged={onProjectChanged} />
       ) : (
-        <BasicsPanel />
+        <BasicsPanel courseId={currentCourseId} />
       )}
     </aside>
   );

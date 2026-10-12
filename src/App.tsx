@@ -21,17 +21,37 @@ import { SettingsModal } from './components/SettingsModal';
 import { DocModal } from './components/DocModal';
 import { LoginScreen } from './components/LoginScreen';
 
+// 按课程隔离的本地存储键
+const kStage = (cid: string) => `cc-stage:${cid}`;
+const kDone = (cid: string) => `cc-done:${cid}`;
+const kPassed = (cid: string) => `cc-passed:${cid}`;
+
+function loadCourseDirs(): Record<string, string> {
+  try {
+    const d = JSON.parse(localStorage.getItem('cc-course-dirs') || '{}');
+    return d && typeof d === 'object' ? d : {};
+  } catch {
+    return {};
+  }
+}
+
+const initialCourseId = (() => {
+  const v = localStorage.getItem('cc-course');
+  return v && COURSES.some((c) => c.id === v) ? v : COURSES[0].id;
+})();
+
 export default function App() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [toolchain, setToolchain] = useState<ToolchainInfo | null>(null);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [tabs, setTabs] = useState<FileTab[]>([]);
   const [activePath, setActivePath] = useState('');
-  const [currentCourseId, setCurrentCourseId] = useState(() => {
-    const v = localStorage.getItem('cc-course');
-    return v && COURSES.some((c) => c.id === v) ? v : COURSES[0].id;
+  const [currentCourseId, setCurrentCourseId] = useState(initialCourseId);
+  const [currentStageId, setCurrentStageId] = useState(() => {
+    const stages = getCourse(initialCourseId).stages;
+    const v = localStorage.getItem(kStage(initialCourseId));
+    return v && stages.some((s) => s.id === v) ? v : stages[0]?.id || '';
   });
-  const [currentStageId, setCurrentStageId] = useState('stage1');
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -189,10 +209,10 @@ export default function App() {
         setSsoLoggedIn(b.sso.loggedIn);
         setSsoUser(b.sso.user);
       }
-      const sid = localStorage.getItem('cc-stage') || 'stage1';
+      const sid = localStorage.getItem(kStage(currentCourseId)) || getCourse(currentCourseId).stages[0]?.id || '';
       let done: string[] = [];
       try {
-        const parsed = JSON.parse(localStorage.getItem('cc-done') || '[]');
+        const parsed = JSON.parse(localStorage.getItem(kDone(currentCourseId)) || '[]');
         if (Array.isArray(parsed)) done = parsed;
       } catch {
         done = [];
@@ -407,6 +427,10 @@ export default function App() {
     }
     const res = await window.api.chooseProject();
     if (res.canceled || !res.projectDir) return;
+    // 把当前课程映射到新选的工程目录
+    const dirs = loadCourseDirs();
+    dirs[currentCourseId] = res.projectDir;
+    localStorage.setItem('cc-course-dirs', JSON.stringify(dirs));
     setSettings((s) => (s ? { ...s, projectDir: res.projectDir! } : s));
     setTabs([]);
     setActivePath('');
@@ -551,24 +575,49 @@ export default function App() {
   };
 
   // ---- course / stage ------------------------------------------------------
-  const selectCourse = (courseId: string) => {
+  const selectCourse = async (courseId: string) => {
+    if (courseId === currentCourseId) return;
     const c = getCourse(courseId);
+    // 1) 保存当前课程的工程目录，并切换到新课程的工程目录（每门课独立的目录）
+    const dirs = loadCourseDirs();
+    dirs[currentCourseId] = settings?.projectDir || '';
+    const newDir = dirs[courseId] || '';
+    localStorage.setItem('cc-course-dirs', JSON.stringify(dirs));
+    if (newDir !== (settings?.projectDir || '')) {
+      await window.api.settingsSet({ projectDir: newDir });
+      setSettings((s) => (s ? { ...s, projectDir: newDir } : s));
+    }
+    // 2) 切换课程 + 回到该课程上次的阶段
     setCurrentCourseId(c.id);
     localStorage.setItem('cc-course', c.id);
-    // 切课程后回到该课程的第一个阶段
+    const savedStage = localStorage.getItem(kStage(c.id));
     const firstStage = c.stages[0]?.id || '';
-    setCurrentStageId(firstStage);
-    if (firstStage) localStorage.setItem('cc-stage', firstStage);
+    const stage = savedStage && c.stages.some((s) => s.id === savedStage) ? savedStage : firstStage;
+    setCurrentStageId(stage);
+    // 3) 重置该课程的阶段完成状态、标签页、文件树
+    let done: string[] = [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem(kDone(c.id)) || '[]');
+      if (Array.isArray(parsed)) done = parsed;
+    } catch {
+      done = [];
+    }
+    setCompletedIds(new Set(done));
+    setTabs([]);
+    setActivePath('');
+    clearContext();
+    if (newDir) await loadFiles();
+    else setFiles([]);
   };
 
   const selectStage = (id: string) => {
     setCurrentStageId(id);
-    localStorage.setItem('cc-stage', id);
+    localStorage.setItem(kStage(currentCourseId), id);
   };
 
   const stagePassed = (id: string) => {
     try {
-      const map = JSON.parse(localStorage.getItem('cc-passed') || '{}');
+      const map = JSON.parse(localStorage.getItem(kPassed(currentCourseId)) || '{}');
       return Boolean(map[id]);
     } catch {
       return false;
@@ -587,7 +636,7 @@ export default function App() {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
-      localStorage.setItem('cc-done', JSON.stringify([...next]));
+      localStorage.setItem(kDone(currentCourseId), JSON.stringify([...next]));
       return next;
     });
   };
@@ -609,9 +658,9 @@ export default function App() {
   // ---- build / test -------------------------------------------------------
   const recordStagePass = (id: string) => {
     try {
-      const map = JSON.parse(localStorage.getItem('cc-passed') || '{}');
+      const map = JSON.parse(localStorage.getItem(kPassed(currentCourseId)) || '{}');
       map[id] = true;
-      localStorage.setItem('cc-passed', JSON.stringify(map));
+      localStorage.setItem(kPassed(currentCourseId), JSON.stringify(map));
     } catch {
       /* ignore */
     }
