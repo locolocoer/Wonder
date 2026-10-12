@@ -444,8 +444,8 @@ export default function App() {
   }, []);
 
   const openReference = async () => {
-    if (!getCourse(currentCourseId).available) {
-      await window.api.dialogMessage({ message: '这门课程即将上线，暂无参考答案。可先切回「C 编译器」开始练习。' });
+    if (getCourse(currentCourseId).kind !== 'compiler') {
+      await window.api.dialogMessage({ message: '该课程暂无内置参考答案，可参考「基础」栏目的原理说明，或向 AI 导师求助。' });
       return;
     }
     const r = await window.api.readReference();
@@ -635,7 +635,7 @@ export default function App() {
     setBuildResult(null);
     try {
       const testCases = effectiveScope === 'all' ? getCourse(currentCourseId).stages.flatMap((s) => s.testCases) : stage.testCases;
-      const res = await window.api.buildRun({ testCases, ccPath: settings.toolchain.ccPath, language: settings.language });
+      const res = await window.api.buildRun({ testCases, ccPath: settings.toolchain.ccPath, language: settings.language, kind: getCourse(currentCourseId).kind });
       setBuildResult(res);
       if (res.ok && res.failCount === 0 && res.total > 0 && effectiveScope === 'stage') {
         recordStagePass(currentStageId);

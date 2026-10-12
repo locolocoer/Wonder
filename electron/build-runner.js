@@ -88,14 +88,14 @@ function exeName(name) {
  * Emits build:log events via `emit(type, text, testId)`.
  */
 async function runBuild(payload, emit) {
-  const { projectDir, ccPath, testCases = [], language = 'c' } = payload;
+  const { projectDir, ccPath, testCases = [], language = 'c', kind = 'compiler' } = payload;
   const cc = ccPath || (language === 'cpp' ? 'g++' : 'gcc');
   const log = (type, text, testId) => emit(type, text, testId);
 
   const results = [];
   let compileOk = false;
 
-  // 1. Compile the user's compiler.
+  // 1. Compile the user's sources.
   const srcDir = path.join(projectDir, 'src');
   const sources = walkSources(srcDir, language);
   if (!sources.length) {
@@ -103,7 +103,7 @@ async function runBuild(payload, emit) {
     return {
       ok: false,
       compileOk: false,
-      error: `未在 src/ 目录下找到任何 ${ext} 源文件。请先创建你的编译器源码（如 main${ext}、lexer${ext}）。`,
+      error: `未在 src/ 目录下找到任何 ${ext} 源文件。请先创建源码（如 main${ext}）。`,
       results,
     };
   }
@@ -111,6 +111,13 @@ async function runBuild(payload, emit) {
   const workDir = path.join(projectDir, '.trainer-tests');
   fs.rmSync(workDir, { recursive: true, force: true });
   fs.mkdirSync(workDir, { recursive: true });
+
+  if (kind === 'httpd') {
+    return await runHttpTests({ cc, sources, projectDir, workDir, testCases, log });
+  }
+  if (kind === 'os') {
+    return await runOsTests({ cc, sources, projectDir, workDir, testCases, language, log });
+  }
 
   const compilerBin = path.join(workDir, exeName('mycc'));
   log('info', `使用编译器: ${cc}`);
@@ -249,6 +256,164 @@ async function runBuild(payload, emit) {
     total: results.length,
     results,
   };
+}
+
+// ---- HTTP 服务器课程：编译 server，启动后发起真实请求校验状态码/正文 ----
+function httpRequest(port, reqPath, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const http = require('http');
+    const req = http.get({ host: '127.0.0.1', port, path: reqPath, timeout: timeoutMs }, (res) => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (d) => (body += d));
+      res.on('end', () => resolve({ status: res.statusCode, body }));
+    });
+    req.on('timeout', () => { req.destroy(new Error('请求超时')); });
+    req.on('error', reject);
+  });
+}
+
+function killTree(child) {
+  if (!child || !child.pid) return;
+  if (process.platform === 'win32') {
+    try {
+      const { spawn } = require('child_process');
+      const tk = spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
+      tk.on('error', () => {});
+      tk.unref();
+    } catch {
+      /* ignore */
+    }
+  }
+  try {
+    child.kill();
+  } catch {
+    /* ignore */
+  }
+}
+
+async function runHttpTests({ cc, sources, projectDir, workDir, testCases, log }) {
+  const serverBin = path.join(workDir, exeName('server'));
+  log('info', `使用编译器: ${cc}`);
+  log('info', `编译源文件: ${sources.map((s) => path.basename(s)).join(', ')}`);
+  const build = await runCmd(cc, ['-o', serverBin, ...sources], { cwd: projectDir });
+  if (build.stderr) log('stderr', build.stderr);
+  if (build.code !== 0) {
+    return {
+      ok: false,
+      compileOk: false,
+      error: `服务器编译失败（退出码 ${build.code}）。请修复编译错误后重试。`,
+      results: [],
+      buildLog: { stdout: build.stdout, stderr: build.stderr },
+    };
+  }
+  log('ok', '服务器构建成功 ✓');
+
+  const results = [];
+  for (const tc of testCases) {
+    log('info', `— 测试 ${tc.name}`, tc.id);
+    const docRoot = path.join(workDir, 'www');
+    fs.mkdirSync(docRoot, { recursive: true });
+    const relFile = (tc.path || '/index.html').replace(/^\/+/, '');
+    const filePath = path.join(docRoot, relFile);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, tc.source || '', 'utf8');
+
+    const port = tc.port || (20000 + Math.floor(Math.random() * 20000));
+    const { spawn } = require('child_process');
+    const child = spawn(serverBin, [String(port), docRoot], { cwd: workDir, windowsHide: true });
+    const result = {
+      id: tc.id,
+      name: tc.name,
+      mode: 'http',
+      pass: false,
+      expected: `status ${tc.expectedStatus ?? 200}` + (tc.expected ? ` 含 "${tc.expected}"` : ''),
+      actual: '',
+      diffLine: -1,
+      note: '',
+      description: tc.description || '',
+      source: tc.source || '',
+      steps: [],
+    };
+    try {
+      await new Promise((r) => setTimeout(r, 400));
+      const resp = await httpRequest(port, tc.path || '/', 3000);
+      const statusOk = resp.status === (tc.expectedStatus ?? 200);
+      const bodyOk = tc.expected ? String(resp.body).includes(tc.expected) : true;
+      result.actual = `status ${resp.status}` + (resp.body ? ` body: ${resp.body.slice(0, 200)}` : '');
+      result.steps.push({ name: '发起请求', status: statusOk && bodyOk ? 'ok' : 'fail', detail: `GET ${tc.path || '/'} → ${resp.status}` });
+      if (!statusOk) result.note = `期望状态 ${tc.expectedStatus ?? 200}，实际 ${resp.status}`;
+      else if (!bodyOk) result.note = `响应正文未包含 "${tc.expected}"`;
+      result.pass = statusOk && bodyOk;
+    } catch (e) {
+      result.note = '请求失败：' + (e && e.message ? e.message : String(e));
+      result.steps.push({ name: '发起请求', status: 'fail', detail: result.note });
+    } finally {
+      killTree(child);
+    }
+    if (result.pass) log('ok', `✓ 通过 ${tc.name}`, tc.id);
+    else log('fail', `✗ 未通过 ${tc.name}：${result.note}`, tc.id);
+    results.push(result);
+  }
+
+  const passCount = results.filter((r) => r.pass).length;
+  return { ok: true, compileOk: true, passCount, failCount: results.length - passCount, total: results.length, results };
+}
+
+// ---- 操作系统课程：把学生 src 与测试程序（含 main）一起编译运行，校验退出码/输出 ----
+async function runOsTests({ cc, sources, projectDir, workDir, testCases, language, log }) {
+  const results = [];
+  let compileOk = true;
+  for (const tc of testCases) {
+    log('info', `— 测试 ${tc.name}`, tc.id);
+    const testSrc = path.join(workDir, `${tc.id}_test.c`);
+    fs.writeFileSync(testSrc, tc.source || '', 'utf8');
+    const testBin = path.join(workDir, exeName(tc.id + '_test'));
+    const incDir = path.join(projectDir, 'src');
+    const build = await runCmd(cc, ['-I', incDir, '-o', testBin, ...sources, testSrc], { cwd: projectDir, timeout: 20000 });
+    const result = {
+      id: tc.id,
+      name: tc.name,
+      mode: tc.mode,
+      pass: false,
+      expected: tc.expected ?? '',
+      actual: '',
+      diffLine: -1,
+      note: '',
+      description: tc.description || '',
+      source: tc.source || '',
+      expectedExit: tc.expectedExit ?? 0,
+      actualExit: undefined,
+      steps: [],
+    };
+    if (build.code !== 0) {
+      compileOk = false;
+      result.note = `编译测试程序失败：${(build.stderr || build.stdout || '').slice(0, 1500)}`;
+      result.steps.push({ name: '编译测试程序', status: 'fail', detail: '退出码 ' + build.code });
+    } else {
+      result.steps.push({ name: '编译测试程序', status: 'ok', detail: 'ok' });
+      const run = await runCmd(testBin, [], { cwd: workDir, timeout: 5000 });
+      result.actualExit = run.code;
+      if (tc.mode === 'stdout') {
+        const exp = normalize(tc.expected ?? '');
+        const act = normalize(run.stdout);
+        result.actual = run.stdout;
+        result.steps.push({ name: '运行并对比输出', status: exp === act ? 'ok' : 'fail', detail: exp === act ? '输出一致' : '输出不一致' });
+        if (exp === act) result.pass = true;
+        else { result.diffLine = firstDiffLine(normalize(tc.expected ?? ''), normalize(run.stdout)); result.note = '输出与期望不一致'; }
+      } else {
+        const exp = tc.expectedExit ?? 0;
+        result.steps.push({ name: '运行并对比退出码', status: run.code === exp ? 'ok' : 'fail', detail: `期望 ${exp}，实际 ${run.code}` });
+        if (run.code !== exp) result.note = `期望退出码 ${exp}，实际 ${run.code}`;
+        else result.pass = true;
+      }
+    }
+    if (result.pass) log('ok', `✓ 通过 ${tc.name}`, tc.id);
+    else log('fail', `✗ 未通过 ${tc.name}：${result.note}`, tc.id);
+    results.push(result);
+  }
+  const passCount = results.filter((r) => r.pass).length;
+  return { ok: true, compileOk, passCount, failCount: results.length - passCount, total: results.length, results };
 }
 
 module.exports = { runBuild, runCmd, normalize, firstDiffLine };

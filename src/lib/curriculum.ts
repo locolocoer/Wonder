@@ -415,7 +415,248 @@ export const CURRICULUM: Stage[] = [
   },
 ];
 
-/** 一门训练课程：包含课程介绍、分阶段任务与是否已上线。 */
+// ---- HTTP 服务器课程 --------------------------------------------------------
+// 命令行约定：server <port> <documentRoot>
+export const HTTP_INTRO: string[] = [
+  '项目目标：用 C/C++ 从零写一个能处理 HTTP 请求的静态 Web 服务器——监听端口、解析请求行、从磁盘读取文件、返回符合规范的响应。',
+  '命令行接口：server <port> <documentRoot>。程序监听指定端口，把指定目录作为「网站根目录」对外提供文件。',
+  '你需要会：socket 编程（socket / bind / listen / accept）、文件读写、字符串处理，以及 HTTP 协议基础（请求行 / 状态码 / 响应头）。',
+  '测试方式：自动编译你的服务器、启动它、向它发起真实的 HTTP 请求，并检查状态码与响应内容。',
+  '怎么用：左侧「课程路线」按阶段推进，写完点底部「▶ 编译并测试」，绿了再进下一阶段。',
+];
+
+export const HTTP_STAGES: Stage[] = [
+  {
+    id: 'h1',
+    num: 1,
+    title: 'socket 监听与最小响应',
+    summary: '搭建工程，用 socket 监听端口、接受连接，并返回一个最小可用的 HTTP 200 响应。',
+    files: ['新建 src/main.c —— 解析命令行参数、创建 socket、bind/listen/accept 循环、发送最小响应'],
+    background: [
+      'socket 是网络通信的端点：socket() 创建、bind() 绑定端口、listen() 进入监听、accept() 接受一个客户端连接。',
+      'HTTP 响应最小形式：先写状态行 "HTTP/1.1 200 OK\\r\\n"，再写一个空行 "\\r\\n"，然后是正文。',
+      '命令行参数：argv[1] 是端口（转成整数用 atoi），argv[2] 是网站根目录。',
+      'Windows 下使用 winsock：需要 WSAStartup() 初始化，并用 closesocket() 关闭；Linux/macOS 用 close()。',
+    ],
+    goals: ['解析 server <port> <root> 两个参数', '创建 socket 并 bind/listen', 'accept 一个连接后返回 "HTTP/1.1 200 OK" + 空行 + 正文'],
+    hints: [
+      '先写一个能监听端口并打印「listening on port N」的骨架，验证编译链接通过（Windows 记得链接 ws2_32）。',
+      '响应格式注意：状态行和每个响应头后面都要有 \\r\\n，正文前必须有一个空行（即连续两个 \\r\\n）。',
+      '本阶段正文可以写死为 "hello"，先跑通「编译 → 启动 → 请求 → 拿到响应」全链路。',
+    ],
+    contract: 'server <port> <documentRoot> 启动后，对任意请求返回 200 状态与正文 hello。',
+    testCases: [
+      { id: 'h1-1', name: '最小 200 响应', mode: 'http', source: 'hello', path: '/index.html', expectedStatus: 200, expected: 'hello', description: '请求任意路径都应返回 200 与 hello。' },
+    ],
+    acceptance: ['服务器能启动并监听端口', '对请求返回 200 + hello'],
+  },
+  {
+    id: 'h2',
+    num: 2,
+    title: '解析 HTTP 请求行',
+    summary: '读取请求行并解析出方法、路径，按路径决定返回内容。',
+    files: ['改动 src/main.c —— 读入请求行、解析 GET /路径 HTTP/1.1，打印或用路径做分支'],
+    background: [
+      'HTTP 请求第一行（请求行）格式：GET /index.html HTTP/1.1（方法 + 空格 + 路径 + 空格 + 版本）。',
+      '读取客户端数据用 recv()；拿到的是字节流，需要自己找到第一个 \\r\\n 作为请求行结束。',
+      '路径解码：URL 里空格等字符会被编码（%20），本阶段可先不做解码，直接当文件路径用。',
+    ],
+    goals: ['用 recv() 读入请求行', '解析出路径部分', '把解析出的路径回显到响应正文（验证解析正确）'],
+    hints: [
+      '用 recv() 读一小段（如 4096 字节），再用 strstr 找 "\\r\\n" 截出第一行。',
+      '请求行按空格切三段：sscanf(buf, "%s %s %s", method, path, version)。',
+      '本阶段把 path 拼进响应正文返回，方便用测试验证解析对不对。',
+    ],
+    contract: '响应正文应包含请求的路径（例如请求 /abc 时正文含 /abc）。',
+    testCases: [
+      { id: 'h2-1', name: '回显请求路径', mode: 'http', source: 'x', path: '/hello', expectedStatus: 200, expected: '/hello', description: '正文应包含请求的路径 /hello。' },
+    ],
+    acceptance: ['能正确解析 GET 请求的路径并在响应中体现'],
+  },
+  {
+    id: 'h3',
+    num: 3,
+    title: '静态文件服务',
+    summary: '把请求路径映射到 documentRoot 下的文件，读取内容并作为响应正文返回。',
+    files: ['改动 src/main.c —— 拼接 documentRoot + path、打开文件、读内容、写入响应正文'],
+    background: [
+      '文件路径拼接：root 与 path 之间补斜杠，注意 path 以 / 开头时要去掉重复斜杠。',
+      '读文件套路：fopen + fseek/ftell 取大小 + malloc + fread + fclose（或用 stat 拿文件大小）。',
+      '返回文件内容前先输出 "Content-Length: 大小\\r\\n"，这样客户端知道正文多长。',
+      '安全：path 里出现 .. 会越出网站根目录，本阶段先忽略，阶段 4 会做防护。',
+    ],
+    goals: ['根据 path 找到 documentRoot 下的文件', '读取文件内容', '返回 200 + Content-Length + 文件内容'],
+    hints: [
+      '拼接路径后先 fopen 判断文件是否存在；不存在就先返回 404（可留到阶段 4 完善）。',
+      '读取文件大小用 ftell 技巧，或直接读进一个大缓冲区。',
+      '用 Content-Length 告诉客户端正文长度，避免浏览器一直等待。',
+    ],
+    contract: 'GET /index.html 应返回 documentRoot/index.html 的文件内容，状态 200，带 Content-Length。',
+    testCases: [
+      { id: 'h3-1', name: '返回文件内容', mode: 'http', source: 'hello file', path: '/index.html', expectedStatus: 200, expected: 'hello file', description: '应返回 /index.html 的文件内容。' },
+    ],
+    acceptance: ['能正确读取并返回静态文件内容'],
+  },
+  {
+    id: 'h4',
+    num: 4,
+    title: '状态码与安全',
+    summary: '处理 404、路径穿越防护，并按扩展名返回正确的 Content-Type。',
+    files: ['改动 src/main.c —— 404 处理、.. 路径校验、Content-Type 映射'],
+    background: [
+      '404：请求的文件不存在时返回 "HTTP/1.1 404 Not Found" 与提示页。',
+      '路径穿越：请求 /../../etc/passwd 会越出根目录，必须拒绝（校验拼接后的真实路径仍在 root 内）。',
+      'Content-Type：浏览器靠它决定如何渲染，.html→text/html、.css→text/css、.js→application/javascript、图片→image/*。',
+    ],
+    goals: ['文件不存在时返回 404', '防止 .. 路径穿越', '按扩展名返回 Content-Type'],
+    hints: [
+      '路径校验：把 root+path 规范化后检查是否以 root 开头；或直接用 realpath 后比对。',
+      'Content-Type 用一张「扩展名→类型」的小映射表，找不到就 text/plain。',
+      '404 页面正文可写 "not found"，状态行务必写 404 Not Found。',
+    ],
+    contract: 'GET /nope.txt（不存在）返回 404；GET /index.html 返回 200 且 Content-Type 为 text/html。',
+    testCases: [
+      { id: 'h4-1', name: '404 处理', mode: 'http', source: '', path: '/nope.txt', expectedStatus: 404, expected: '', description: '请求不存在的文件应返回 404。' },
+      { id: 'h4-2', name: 'Content-Type 正确', mode: 'http', source: '<h1>hi</h1>', path: '/a.html', expectedStatus: 200, expected: '<h1>hi</h1>', description: '返回内容正确即可（Content-Type 由实现保证）。' },
+    ],
+    acceptance: ['404 与 Content-Type 均正确处理'],
+  },
+  {
+    id: 'h5',
+    num: 5,
+    title: '循环服务与健壮性',
+    summary: '持续接受多个连接、处理完整请求头，并优雅应对空请求/断连。',
+    files: ['改动 src/main.c —— 外层循环 accept 多个连接、跳过完整请求头、处理 recv 返回 0（对端关闭）'],
+    background: [
+      '一个真实服务器要能连续处理多个客户端：把 accept + 处理包进 while(1) 循环。',
+      '请求头：请求行之后还有若干 "Key: Value" 头，直到空行结束。至少要「吃掉」它们再处理下一个请求。',
+      '健壮性：recv 返回 0 表示对端关闭；返回负数是出错，都应优雅退出而不崩溃。',
+    ],
+    goals: ['循环处理多个连接', '跳过完整请求头', '处理断开/空请求不崩溃'],
+    hints: [
+      '外层 while(1) 里 accept，处理完一个连接就 close，再 accept 下一个。',
+      '读请求时循环 recv，直到遇到 "\\r\\n\\r\\n"（空行）为止，之后再处理路径。',
+      'recv 返回 0 或负数时直接 close 并 continue，不要访问无效数据。',
+    ],
+    contract: '能连续处理多次请求而不退出、不崩溃。',
+    testCases: [
+      { id: 'h5-1', name: '连续两次请求', mode: 'http', source: 'first', path: '/a.html', expectedStatus: 200, expected: 'first', description: '第一次请求返回 first。' },
+      { id: 'h5-2', name: '第二次请求仍正常', mode: 'http', source: 'second', path: '/b.html', expectedStatus: 200, expected: 'second', description: '第二次请求返回 second（服务器未退出）。' },
+    ],
+    acceptance: ['连续多个请求均能正确响应'],
+  },
+];
+
+// ---- 操作系统课程 ------------------------------------------------------------
+// 用「可单测的内核模块」方式教学：每个阶段实现一组 C 函数，测试用一段含 main 的 C 程序调用并校验。
+export const OS_INTRO: string[] = [
+  '项目目标：从零理解操作系统内核的关键机制——内存模型、VGA 文本输出、内存分配、中断、多任务调度，并用 C 实现可运行、可单测的内核模块。',
+  '本课程采用「内核模块 + 单元测试」的方式：你实现 src/ 下的内核函数，测试会编译你的源码 + 一段含 main 的测试程序，调用你的函数并检查结果。',
+  '你需要会：C 指针与结构体、位运算、函数指针、内存布局。以及一点 x86 的基础概念（本课程会逐步讲解）。',
+  '测试方式：每个测试用例是一段完整的 C 程序（含 main），会与你写的 src/*.c 一起编译运行，通过退出码或输出判断对错。',
+];
+
+export const OS_STAGES: Stage[] = [
+  {
+    id: 'o1',
+    num: 1,
+    title: '内存与基础工具函数',
+    summary: '理解内存模型，实现内核必备的 memset / memcpy / strlen 等工具函数。',
+    files: ['新建 src/klib.h —— 声明 memset/memcpy/strlen 等', '新建 src/klib.c —— 实现这些函数'],
+    background: [
+      '内核没有标准库可用（没有 <string.h>），一切要从零写：memset 把一块内存置为某字节，memcpy 拷贝字节，strlen 求字符串长度。',
+      '指针即地址：char* 指向一个字节，对它加减就是前后移动地址。',
+      'volatile 关键字告诉编译器「每次都要真正读写内存」，操作硬件寄存器时常用。',
+    ],
+    goals: ['实现 memset / memcpy / strlen', '理解指针与内存地址'],
+    hints: ['memset 用循环把每个字节写成目标值', 'memcpy 注意处理重叠（本课程可先实现不重叠版本）', 'strlen 一直走直到遇到 \\0'],
+    contract: 'klib.c 提供 memset、memcpy、strlen，测试程序会 include "klib.h" 并校验。',
+    testCases: [
+      { id: 'o1-1', name: 'memset/strlen', mode: 'run', source: '#include "klib.h"\nint main(){ char b[8]; memset(b, 65, 8); b[7]=0; return strlen(b)==7 ? 0 : 1; }', expectedExit: 0 },
+      { id: 'o1-2', name: 'memcpy', mode: 'run', source: '#include "klib.h"\nint main(){ char a[4]={1,2,3,4}; char b[4]; memcpy(b,a,4); return (b[0]==1&&b[3]==4)?0:1; }', expectedExit: 0 },
+    ],
+    acceptance: ['三个工具函数行为正确'],
+  },
+  {
+    id: 'o2',
+    num: 2,
+    title: 'VGA 文本模式输出',
+    summary: '实现向 VGA 文本缓冲区写字符的 vga 模块，理解显存映射。',
+    files: ['新建 src/vga.h / vga.c —— 实现 vga_putchar / vga_puts / vga_clear，写入一个可寻址的显存缓冲'],
+    background: [
+      'VGA 文本模式的显存映射在 0xB8000，每个字符占 2 字节：低字节是字符，高字节是颜色属性（前景/背景）。',
+      '为了能在普通程序里单测，本课程把「显存」抽象成一块可注入的缓冲区：vga 函数写到一个数组里，测试读取该数组校验。',
+      'vga_puts 遍历字符串调用 vga_putchar；vga_clear 清屏并复位光标。',
+    ],
+    goals: ['实现 vga_putchar/vga_puts/vga_clear', '理解字符+属性双字节布局'],
+    hints: ['把显存缓冲做成全局数组 char video[80*25*2]', 'vga_putchar 把字符写到 video[pos*2]，属性写到 video[pos*2+1]', 'vga_puts 循环调用 vga_putchar 并移动光标'],
+    contract: 'vga.c 提供 vga_putchar/vga_puts/vga_clear 与可读取的 video 缓冲，测试会检查输出字符。',
+    testCases: [
+      { id: 'o2-1', name: 'vga_puts 写入字符', mode: 'stdout', source: '#include "vga.h"\n#include <stdio.h>\nint main(){ vga_clear(); vga_puts("OK"); putchar(video[0]); putchar(video[2]); return 0; }', expected: 'OK' },
+    ],
+    acceptance: ['VGA 输出函数把字符正确写入显存缓冲'],
+  },
+  {
+    id: 'o3',
+    num: 3,
+    title: '内存分配器 kmalloc/kfree',
+    summary: '实现一个简单的内存池分配器，理解动态内存与空闲链表。',
+    files: ['新建 src/kmalloc.h / kmalloc.c —— 实现 kmalloc/kfree（基于一块静态内存池的空闲链表）'],
+    background: [
+      '内核不能在运行时向操作系统要内存，必须自己管理一块预分配的内存池。',
+      '空闲链表：把空闲块串成链表，分配时从链表取一块，释放时插回（可做相邻合并）。',
+      '块头：每个块前存一个元数据头（大小 + 是否空闲 + next），返回给调用者的是头之后的地址。',
+    ],
+    goals: ['用静态数组当内存池', '实现 kmalloc 分配、kfree 释放', '分配后能写入不越界'],
+    hints: ['内存池用 static char pool[POOL_SIZE]', 'kmalloc 遍历空闲链表找足够大的块', 'kfree 把块标记为空闲并插回链表'],
+    contract: 'kmalloc.c 提供 kmalloc/kfree，测试会多次分配/释放并检查数据不串。',
+    testCases: [
+      { id: 'o3-1', name: '分配与写入', mode: 'run', source: '#include "kmalloc.h"\nint main(){ char* p=(char*)kmalloc(16); for(int i=0;i<16;i++) p[i]=(char)i; return (p[0]==0&&p[15]==15)?0:1; }', expectedExit: 0 },
+      { id: 'o3-2', name: '释放后可复用', mode: 'run', source: '#include "kmalloc.h"\nint main(){ void* a=kmalloc(32); kfree(a); void* b=kmalloc(32); return (a==b)?0:1; }', expectedExit: 0 },
+    ],
+    acceptance: ['kmalloc/kfree 基本正确'],
+  },
+  {
+    id: 'o4',
+    num: 4,
+    title: '中断描述符表 IDT',
+    summary: '构建 IDT 结构，理解中断门与描述符字段布局。',
+    files: ['新建 src/idt.h / idt.c —— 定义 idt_entry 结构、idt_set_gate 填充字段、打印/返回描述符内容'],
+    background: [
+      '中断：CPU 响应硬件/软件事件（键盘、时钟、系统调用）时，通过中断描述符表 IDT 找到处理函数入口。',
+      '一个 IDT 门描述符是 8 字节：偏移量（handler 地址）被拆成两段，加上段选择子与属性标志。',
+      '本阶段用「可单测」方式：不真正加载 IDT，而是正确填充描述符结构体，测试校验各字段。',
+    ],
+    goals: ['定义 idt_entry 结构', '实现 idt_set_gate 正确填充 offset/selector/type', '理解 8 字节描述符布局'],
+    hints: ['offset 低 16 位放 base_low，高 16 位放 base_high', 'selector 用 0x08（内核代码段），type 用 0x8E（中断门）', '把 handler 地址拆成低 16 位和高 16 位'],
+    contract: 'idt.c 提供 idt_entry 结构与 idt_set_gate，测试会校验填充的 offset 与 type。',
+    testCases: [
+      { id: 'o4-1', name: 'IDT 门字段', mode: 'run', source: '#include "idt.h"\nint main(){ struct idt_entry e; idt_set_gate(&e, (unsigned long)0x12345678); return (e.offset_low==0x5678 && e.offset_high==0x1234)?0:1; }', expectedExit: 0 },
+    ],
+    acceptance: ['IDT 门描述符填充正确'],
+  },
+  {
+    id: 'o5',
+    num: 5,
+    title: '多任务与轮转调度',
+    summary: '实现一个协作式/轮转的任务调度器，理解上下文切换与任务队列。',
+    files: ['新建 src/sched.h / sched.c —— 定义任务结构、sched_add/sched_next/sched_tick，维护任务队列'],
+    background: [
+      '多任务：操作系统在多个任务间轮流执行。轮转（round-robin）调度按顺序给每个任务一小段时间片。',
+      '任务结构：记录任务 id、状态、上下文（寄存器快照）。本阶段简化：只维护就绪队列与「当前任务」指针。',
+      '调度器核心：sched_add 把任务入队，sched_next 取下一个可运行任务，sched_tick 模拟时间片轮转。',
+    ],
+    goals: ['定义任务结构', '实现 sched_add / sched_next / sched_tick', '验证轮转顺序正确'],
+    hints: ['任务队列用数组 + 头尾下标，或简单链表', 'sched_next 按顺序返回下一个任务并循环', 'sched_tick 把当前任务让出，切换到下一个'],
+    contract: 'sched.c 提供 sched_add/sched_next/sched_tick，测试会校验轮转顺序。',
+    testCases: [
+      { id: 'o5-1', name: '轮转顺序', mode: 'run', source: '#include "sched.h"\nint main(){ sched_add(1); sched_add(2); sched_add(3); int a=sched_next(), b=sched_next(), c=sched_next(), d=sched_next(); return (a==1&&b==2&&c==3&&d==1)?0:1; }', expectedExit: 0 },
+    ],
+    acceptance: ['调度器按轮转顺序返回任务'],
+  },
+];
+
+/** 一门训练课程：包含课程介绍、分阶段任务、测试类型与是否已上线。 */
 export interface Course {
   id: string;
   title: string;
@@ -423,10 +664,12 @@ export interface Course {
   subtitle: string;
   intro: string[];
   stages: Stage[];
+  /** 测试流水线类型：compiler=编译器 mycc；httpd=HTTP 服务器；os=内核模块单测 */
+  kind: 'compiler' | 'httpd' | 'os';
   available: boolean;
 }
 
-/** 全部训练课程。首个（编译器）已完整可用，其余为即将上线。 */
+/** 全部训练课程。 */
 export const COURSES: Course[] = [
   {
     id: 'compiler',
@@ -435,25 +678,28 @@ export const COURSES: Course[] = [
     subtitle: '从零实现一个 C 子集编译器（C → x86-64 汇编）',
     intro: PROJECT_INTRO,
     stages: CURRICULUM,
+    kind: 'compiler',
     available: true,
   },
   {
     id: 'os',
     title: '操作系统',
     icon: '💽',
-    subtitle: '从引导扇区到多任务内核',
-    intro: ['即将上线：带你从零写一个能启动、能调度进程的小操作系统（x86 引导扇区、中断、分页、多任务切换）。'],
-    stages: [],
-    available: false,
+    subtitle: '内核模块：内存 / VGA / 分配器 / 中断 / 调度',
+    intro: OS_INTRO,
+    stages: OS_STAGES,
+    kind: 'os',
+    available: true,
   },
   {
     id: 'httpd',
     title: 'HTTP 服务器',
     icon: '🌐',
     subtitle: '用 socket 实现一个静态 Web 服务器',
-    intro: ['即将上线：用 socket 编程实现一个能解析 HTTP 请求、返回静态文件的迷你 Web 服务器。'],
-    stages: [],
-    available: false,
+    intro: HTTP_INTRO,
+    stages: HTTP_STAGES,
+    kind: 'httpd',
+    available: true,
   },
 ];
 

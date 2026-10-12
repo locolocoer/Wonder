@@ -50,7 +50,7 @@ export interface ProjectFile {
   type: 'file' | 'dir';
 }
 
-export type TestMode = 'tokens' | 'ast' | 'stdout' | 'run' | 'error';
+export type TestMode = 'tokens' | 'ast' | 'stdout' | 'run' | 'error' | 'http';
 
 export interface TestCase {
   id: string;
@@ -63,6 +63,12 @@ export interface TestCase {
   description?: string;
   /** 若为 true，则调用编译器时不追加源文件参数（用于 --version/--help 等）。 */
   noSource?: boolean;
+  /** http 模式：请求路径，如 /index.html */
+  path?: string;
+  /** http 模式：期望的 HTTP 状态码 */
+  expectedStatus?: number;
+  /** http 模式：监听端口（默认自动选择） */
+  port?: number;
 }
 
 export interface Stage {
@@ -174,7 +180,7 @@ declare global {
       projectCreate(rel: string, kind: 'file' | 'dir'): Promise<{ ok: boolean; error?: string }>;
       projectDelete(rel: string): Promise<{ ok: boolean; error?: string }>;
       projectRename(rel: string, newName: string): Promise<{ ok: boolean; error?: string }>;
-      buildRun(payload: { testCases: TestCase[]; ccPath?: string; language?: 'c' | 'cpp' }): Promise<BuildResult>;
+      buildRun(payload: { testCases: TestCase[]; ccPath?: string; language?: 'c' | 'cpp'; kind?: 'compiler' | 'httpd' | 'os' }): Promise<BuildResult>;
       shellRun(cmd: string): Promise<{ ok: boolean; code?: number; stdout?: string; stderr?: string; timedOut?: boolean; error?: string }>;
       termRun(cmd: string): Promise<{ ok: boolean }>;
       termKill(): Promise<{ ok: boolean }>;
