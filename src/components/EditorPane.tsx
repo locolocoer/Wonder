@@ -49,9 +49,8 @@ export const EditorPane = React.memo(function EditorPane({
     [active?.readOnly]
   );
 
-  // 给每个标签一个唯一 URI，让 Monaco 为每个标签使用独立 model，
-  // 避免共用 model 导致「打开头文件时 main.c 内容被串改」。
-  const tabUri = (p: string) => 'inmemory://wonder/' + encodeURIComponent(p);
+  // 给每个标签一个唯一 URI，让 Monaco 为每个标签使用独立 model；rev 用于外部更新时重建 model。
+  const tabUri = (p: string, rev?: number) => 'inmemory://wonder/' + encodeURIComponent(p) + (rev ? '/' + rev : '');
 
   // 只读标签的 name 带「（参考答案）/（头文件）」后缀，故优先按真实 path 判断语言
   const langFor = (path: string, name: string): string => {
@@ -98,10 +97,11 @@ export const EditorPane = React.memo(function EditorPane({
         {active ? (
           <Editor
             height="100%"
-            path={tabUri(active.path)}
+            path={tabUri(active.path, active.rev)}
             language={langFor(active.path, active.name)}
             theme={theme}
-            value={active.content}
+            defaultValue={active.content}
+            keepCurrentModel
             onChange={handleChange}
             onMount={(editor, monaco) => {
               editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => onSaveRef.current());

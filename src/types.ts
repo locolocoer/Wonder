@@ -161,6 +161,8 @@ export interface FileTab {
   dirty: boolean;
   /** 只读标签（如「参考答案」），不参与保存 */
   readOnly?: boolean;
+  /** 内容被外部更新（如 git 回滚）时递增，用于让 Monaco 强制重建 model */
+  rev?: number;
 }
 
 declare global {

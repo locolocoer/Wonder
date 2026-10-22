@@ -115,6 +115,13 @@ export default function App() {
   const logBufRef = useRef<BuildLogEntry[]>([]);
   const logTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 编辑器内容存 ref（非受控 Monaco），击键不触发重渲染；tabs 里 content 是「最近一次提交」的内容
+  const contentsRef = useRef<Record<string, string>>({});
+  const tabsRef = useRef<FileTab[]>(tabs);
+  tabsRef.current = tabs;
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const revCounterRef = useRef(0);
+
   const MIN_CENTER_W = 320; // 中间编辑区最小宽度
   const DIVIDERS_W = 10; // 两个竖直分隔条
 
@@ -260,22 +267,7 @@ export default function App() {
     return () => clearTimeout(t);
   }, [messages]);
 
-  // ---- 自动保存：内容变更后 1.5 秒静默写盘，无需手动 Ctrl+S -------------
-  useEffect(() => {
-    const dirtyTabs = tabs.filter((t) => t.dirty && !t.readOnly);
-    if (!dirtyTabs.length) return;
-    const timer = setTimeout(async () => {
-      for (const t of dirtyTabs) {
-        const content = t.content;
-        const r = await window.api.projectWrite(t.path, content);
-        if (r.ok) {
-          // 仅当磁盘内容与本次写入一致时才清除 dirty，避免覆盖用户更新的输入
-          setTabs((prev) => prev.map((x) => (x.path === t.path && x.content === content ? { ...x, dirty: false } : x)));
-        }
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [tabs]);
+  // （自动保存已改为 onChange 里的 ref 防抖，见 savePath/onChange）
 
   const clearChat = useCallback(() => {
     setMessages([]);
@@ -345,8 +337,10 @@ export default function App() {
       }
       const r = await window.api.projectRead(path);
       if (!r.ok) return;
+      const content = r.content || '';
+      contentsRef.current[path] = content;
       setTabs((prev) =>
-        prev.some((t) => t.path === path) ? prev : [...prev, { path, name: path.split('/').pop() || path, content: r.content || '', dirty: false }]
+        prev.some((t) => t.path === path) ? prev : [...prev, { path, name: path.split('/').pop() || path, content, dirty: false, rev: ++revCounterRef.current }]
       );
       setActivePath(path);
     },
@@ -357,20 +351,37 @@ export default function App() {
   const activePathRef = useRef(activePath);
   activePathRef.current = activePath;
 
-  const onChange = useCallback((content: string) => {
-    const path = activePathRef.current;
-    setTabs((prev) =>
-      prev.map((t) => {
-        if (t.path !== path || t.readOnly) return t; // 只读标签（头文件/参考答案）永不落盘、永不标脏
-        if (t.content === content) return t; // 内容未变不标脏
-        return { ...t, content, dirty: true };
-      })
-    );
+  // 把某路径的最新内容写盘，并提交到 tabs（清 dirty、更新 content 作为下次 defaultValue）
+  const savePath = useCallback(async (path: string) => {
+    const t = tabsRef.current.find((x) => x.path === path);
+    if (!t || t.readOnly || !t.dirty) return;
+    const content = contentsRef.current[path] ?? t.content;
+    const r = await window.api.projectWrite(path, content);
+    if (r.ok) {
+      setTabs((prev) => prev.map((x) => (x.path === path && x.dirty ? { ...x, content, dirty: false } : x)));
+    }
   }, []);
 
+  const onChange = useCallback((content: string) => {
+    const path = activePathRef.current;
+    const t = tabsRef.current.find((x) => x.path === path);
+    if (!t || t.readOnly) return; // 只读标签（头文件/参考答案）永不落盘、永不标脏
+    contentsRef.current[path] = content;
+    // 只在 dirty 翻转时更新 state（首次击键），后续击键不再触发整树重渲染
+    if (!t.dirty) {
+      setTabs((prev) => prev.map((x) => (x.path === path ? { ...x, dirty: true } : x)));
+    }
+    // 自动保存：ref 内防抖，1.5s 静默写盘，避免每次击键都触发 effect
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null;
+      savePath(path);
+    }, 1500);
+  }, [savePath]);
+
   const saveAll = useCallback(async () => {
-    // 快照当前脏内容，写盘期间若用户继续输入，只清除「内容未再变化」的脏标记
-    const snapshot = tabs.filter((t) => t.dirty && !t.readOnly).map((t) => ({ path: t.path, content: t.content }));
+    // 快照当前脏内容（取 ref 里的最新内容），写盘期间若用户继续输入，只清除「内容未再变化」的脏标记
+    const snapshot = tabs.filter((t) => t.dirty && !t.readOnly).map((t) => ({ path: t.path, content: contentsRef.current[t.path] ?? t.content }));
     let failed = 0;
     for (const s of snapshot) {
       const r = await window.api.projectWrite(s.path, s.content);
@@ -382,23 +393,24 @@ export default function App() {
       setTabs((prev) =>
         prev.map((t) => {
           const snap = snapshot.find((s) => s.path === t.path);
-          return snap && t.content === snap.content ? { ...t, dirty: false } : t;
+          // 写盘期间若用户又输入了（ref 里内容变了），保留 dirty，不提交
+          return snap && (contentsRef.current[t.path] ?? t.content) === snap.content ? { ...t, content: snap.content, dirty: false } : t;
         })
       );
     }
   }, [tabs]);
 
   const saveActive = useCallback(async () => {
-    const t = tabs.find((x) => x.path === activePath);
+    const t = tabsRef.current.find((x) => x.path === activePath);
     if (!t || t.readOnly) return;
-    const snapContent = t.content;
-    const r = await window.api.projectWrite(t.path, snapContent);
+    const content = contentsRef.current[t.path] ?? t.content;
+    const r = await window.api.projectWrite(t.path, content);
     if (!r.ok) {
       await window.api.dialogMessage({ type: 'error', message: `保存失败：${r.error || '未知错误'}` });
       return;
     }
-    setTabs((prev) => prev.map((x) => (x.path === activePath && x.content === snapContent ? { ...x, dirty: false } : x)));
-  }, [tabs, activePath]);
+    setTabs((prev) => prev.map((x) => (x.path === activePath ? { ...x, content, dirty: false } : x)));
+  }, [activePath]);
 
   const closeTab = useCallback(
     async (path: string) => {
@@ -489,9 +501,10 @@ export default function App() {
   };
 
   const openReadOnlyTab = useCallback((path: string, name: string, content: string) => {
+    contentsRef.current[path] = content;
     setTabs((prev) => {
       if (prev.some((t) => t.path === path)) return prev;
-      return [...prev, { path, name, content, dirty: false, readOnly: true }];
+      return [...prev, { path, name, content, dirty: false, readOnly: true, rev: ++revCounterRef.current }];
     });
     setActivePath(path);
   }, []);
@@ -576,7 +589,12 @@ export default function App() {
         continue;
       }
       const r = await window.api.projectRead(t.path);
-      if (r.ok) next.push({ ...t, content: r.content || '', dirty: false });
+      if (r.ok) {
+        const content = r.content || '';
+        contentsRef.current[t.path] = content;
+        // rev 递增 → Monaco 用新 model 重建，显示外部更新后的内容
+        next.push({ ...t, content, dirty: false, rev: ++revCounterRef.current });
+      }
     }
     setTabs(next);
     if (act && !next.some((t) => t.path === act)) {

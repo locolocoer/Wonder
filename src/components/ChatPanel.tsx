@@ -1,8 +1,38 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatMessage, ProjectFile } from '../types';
 import { MODE_LABELS, type AiMode } from '../lib/ai-prompts';
 import { buildTree, isPathSelected, type TreeNode } from '../lib/file-tree';
 import { Markdown } from './Markdown';
+
+// 流式输出时，把 Markdown 重解析节流到 ~150ms 一次，避免每个 chunk 都重解析整段内容（O(n²) 卡顿）
+function StreamingMarkdown({ text, streaming }: { text: string; streaming: boolean }) {
+  const [shown, setShown] = useState(text);
+  const shownRef = useRef(text);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!streaming) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      setShown(text);
+      return;
+    }
+    shownRef.current = text;
+    if (timerRef.current) return;
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      setShown(shownRef.current);
+    }, 150);
+  }, [text, streaming]);
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
+
+  return <Markdown text={shown} />;
+}
 
 export const ChatPanel = React.memo(function ChatPanel({
   style,
@@ -154,7 +184,7 @@ export const ChatPanel = React.memo(function ChatPanel({
                 <div className="reasoning">{m.reasoning}</div>
               </details>
             )}
-            {m.role === 'assistant' ? <Markdown text={m.content} /> : m.content}
+            {m.role === 'assistant' ? <StreamingMarkdown text={m.content} streaming={Boolean(m.streaming)} /> : m.content}
             {m.streaming && <span className="cursor" />}
           </div>
         ))}
