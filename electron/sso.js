@@ -234,14 +234,20 @@ function loadSession(app) {
   }
 }
 function saveSession(app, session) {
-  fs.mkdirSync(app.getPath('userData'), { recursive: true });
-  const data = JSON.stringify(session, null, 2);
-  // 令牌落盘前加密，降低凭据泄露风险
-  let payload = data;
-  if (safeStorage.isEncryptionAvailable()) {
-    payload = safeStorage.encryptString(data).toString('base64');
+  try {
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    const data = JSON.stringify(session, null, 2);
+    // 令牌落盘前加密，降低凭据泄露风险
+    let payload = data;
+    if (safeStorage.isEncryptionAvailable()) {
+      payload = safeStorage.encryptString(data).toString('base64');
+    }
+    fs.writeFileSync(storePath(app), payload, 'utf8');
+  } catch (e) {
+    // 持久化失败不应让「已成功的登录」整体失败：本次会话仍在内存中有效，
+    // 仅下次启动需要重新登录。记录日志便于排查（如磁盘只读/被占用）。
+    console.error('[sso] 会话保存失败（不影响本次登录）:', e && e.message);
   }
-  fs.writeFileSync(storePath(app), payload, 'utf8');
 }
 function clearSession(app) {
   try {
