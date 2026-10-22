@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 import type { FileTab } from '../types';
 
-export function EditorPane({
+export const EditorPane = React.memo(function EditorPane({
   tabs,
   activePath,
   theme,
@@ -122,4 +122,4 @@ export function EditorPane({
       </div>
     </div>
   );
-}
+});

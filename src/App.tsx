@@ -109,6 +109,12 @@ export default function App() {
   const sizesRef = useRef({ chat: chatWidth, sidebar: sidebarWidth });
   sizesRef.current = { chat: chatWidth, sidebar: sidebarWidth };
 
+  // 流式输出批量缓冲：把同一帧内到达的 AI chunk / 编译日志合并成一次 setState，避免高频重渲染
+  const aiChunkBufRef = useRef<Record<string, { content: string; reasoning: string }>>({});
+  const aiChunkRafRef = useRef(0);
+  const logBufRef = useRef<BuildLogEntry[]>([]);
+  const logTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const MIN_CENTER_W = 320; // 中间编辑区最小宽度
   const DIVIDERS_W = 10; // 两个竖直分隔条
 
@@ -279,17 +285,40 @@ export default function App() {
   // ---- IPC events ---------------------------------------------------------
   useEffect(() => {
     const offChunk = window.api.onEvent('ai:chunk', (data) => {
-      setMessages((prev) =>
-        prev.map((m) => {
-          if (m.id !== data.requestId || !m.streaming) return m;
-          if (data.type === 'content') return { ...m, content: m.content + (data.text || '') };
-          if (data.type === 'reasoning') return { ...m, reasoning: (m.reasoning || '') + (data.text || '') };
-          return m;
-        })
-      );
+      const buf = aiChunkBufRef.current;
+      const entry = buf[data.requestId] || (buf[data.requestId] = { content: '', reasoning: '' });
+      if (data.type === 'content') entry.content += data.text || '';
+      else if (data.type === 'reasoning') entry.reasoning += data.text || '';
+      if (aiChunkRafRef.current) return;
+      aiChunkRafRef.current = requestAnimationFrame(() => {
+        aiChunkRafRef.current = 0;
+        const pending = aiChunkBufRef.current;
+        aiChunkBufRef.current = {};
+        if (!Object.keys(pending).length) return;
+        setMessages((prev) =>
+          prev.map((m) => {
+            const p = pending[m.id];
+            if (!p || !m.streaming) return m;
+            if (!p.content && !p.reasoning) return m;
+            return {
+              ...m,
+              content: p.content ? m.content + p.content : m.content,
+              reasoning: p.reasoning ? (m.reasoning || '') + p.reasoning : m.reasoning,
+            };
+          })
+        );
+      });
     });
     const offLog = window.api.onEvent('build:log', (data) => {
-      setLogs((prev) => [...prev, { type: data.type, text: data.text, testId: data.testId }]);
+      logBufRef.current.push({ type: data.type, text: data.text, testId: data.testId });
+      if (logTimerRef.current) return;
+      logTimerRef.current = setTimeout(() => {
+        logTimerRef.current = null;
+        const pending = logBufRef.current;
+        logBufRef.current = [];
+        if (!pending.length) return;
+        setLogs((prev) => [...prev, ...pending]);
+      }, 100);
     });
     return () => {
       offChunk();
